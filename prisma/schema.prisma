@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// سجل المباريات لإحصائيات عالمية ولوحة المتصدرين
+model GameRecord {
+  id          String   @id @default(cuid())
+  playerName  String
+  mode        String // "ai" | "online" | "local"
+  result      String // "win" | "loss" | "draw" (من وجهة نظر اللاعب)
+  playerColor String // "white" | "black"
+  aiLevel     String? // سهل/متوسط/صعب
+  opponent    String? // اسم الخصم (AI أو لاعب)
+  moves       Int      @default(0)
+  durationSec Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([mode, result])
+  @@index([playerName])
+}
