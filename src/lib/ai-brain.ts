@@ -1,9 +1,8 @@
 // دماغ الذكاء الاصطناعي "الوزير" - يعمل على الخادم فقط
 // يجمع بين محرك minimax المحلي (لضمان حركات قانونية قوية)
-// والنموذج اللغوي (لاختيار النقلة الاستراتيجية وتوليد التعليقات)
-import ZAI from 'z-ai-web-dev-sdk'
+// ونموذج gemma4 عبر Ollama API (لاختيار النقلة الاستراتيجية وتوليد التعليقات)
 import { Chess } from 'chess.js'
-import { ensureZaiConfig, getAIModel } from './zai-config'
+import { AI_MODEL, isOllamaConfigured, OLLAMA_API_KEY, OLLAMA_BASE_URL } from './ollama-config'
 import { getRankedMoves, quickEval, type RankedMove } from './chess-engine'
 import {
   AI_CAPTURE_COMMENTS,
@@ -36,47 +35,39 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ])
 }
 
-let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null
-
-async function getZai() {
-  await ensureZaiConfig()
-  if (!zaiInstance) zaiInstance = await ZAI.create()
-  return zaiInstance
-}
-
-async function callLLM(system: string, user: string, timeoutMs = 6500): Promise<string | null> {
+// استدعاء نموذج gemma4 عبر Ollama API (سحابي أو محلي حسب OLLAMA_BASE_URL)
+async function callLLM(system: string, user: string, timeoutMs = 9000): Promise<string | null> {
+  if (!isOllamaConfigured()) {
+    console.error('[ai-brain] OLLAMA_API_KEY غير مضبوط - سيتم استخدام التعليقات الاحتياطية')
+    return null
+  }
   try {
-    const zai = await getZai()
-    const model = getAIModel()
-    try {
-      const completion = await withTimeout(
-        zai.chat.completions.create({
-          ...(model ? { model } : {}),
+    const res = await withTimeout(
+      fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OLLAMA_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
           messages: [
-            { role: 'assistant', content: system },
+            { role: 'system', content: system },
             { role: 'user', content: user },
           ],
-          thinking: { type: 'disabled' },
+          stream: false,
+          options: { temperature: 0.85, num_predict: 150 },
         }),
-        timeoutMs,
-      )
-      const content = completion?.choices?.[0]?.message?.content
-      return content && content.trim().length > 0 ? content.trim() : null
-    } catch {
-      // محاولة ثانية بدون تحديد النموذج (توافق أوسع مع مزودين مختلفين)
-      const completion = await withTimeout(
-        zai.chat.completions.create({
-          messages: [
-            { role: 'assistant', content: system },
-            { role: 'user', content: user },
-          ],
-          thinking: { type: 'disabled' },
-        }),
-        timeoutMs,
-      )
-      const content = completion?.choices?.[0]?.message?.content
-      return content && content.trim().length > 0 ? content.trim() : null
+      }),
+      timeoutMs,
+    )
+    if (!res.ok) {
+      console.error('[ai-brain] Ollama HTTP error:', res.status, (await res.text()).slice(0, 200))
+      return null
     }
+    const data = (await res.json()) as { message?: { content?: string } }
+    const content = data?.message?.content
+    return content && content.trim().length > 0 ? content.trim() : null
   } catch (e) {
     console.error('[ai-brain] LLM call failed:', e instanceof Error ? e.message : e)
     return null

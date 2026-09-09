@@ -43,7 +43,7 @@ npm install
 
 # 2) إعداد متغيرات البيئة
 cp .env.example .env
-# ثم عدّل .env وضع مفتاح ZAI_API_KEY الخاص بك
+# ثم عدّل .env وضع مفتاح OLLAMA_API_KEY الخاص بك من ollama.com
 
 # 3) قاعدة البيانات
 npm run db:push
@@ -66,9 +66,9 @@ npm start
 3. أضف متغيرات البيئة (Variables):
    | المتغير | القيمة | ملاحظات |
    |---------|--------|---------|
-   | `ZAI_API_KEY` | مفتاحك من Z.ai | إلزامي للعب ضد الوزير |
+   | `OLLAMA_API_KEY` | مفتاحك من [ollama.com](https://ollama.com) | إلزامي للعب ضد الوزير وتعليقاته |
+   | `OLLAMA_BASE_URL` | `https://ollama.com` | اختياري (هو الافتراضي — غيّره فقط لو تستضيف Ollama محلياً) |
    | `AI_MODEL` | `gemma4` | اختياري (هو الافتراضي) |
-   | `ZAI_BASE_URL` | `https://internal-api.z.ai/v1` | اختياري |
    | `DATABASE_URL` | `file:./db/custom.db` | اختياري (هو الافتراضي) |
 4. Railway سيكتشف Nixpacks تلقائياً ويشغّل `npm run build` ثم `npm start`
 5. Generate Domain وافتح رابطك! 🎉
@@ -101,7 +101,7 @@ npm start
 └── prisma/schema.prisma           # سجل المباريات
 ```
 
-**التقنيات**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · shadcn/ui · chess.js · socket.io · Prisma + SQLite · z-ai-web-dev-sdk (نموذج gemma4) · Framer Motion · Web Audio API
+**التقنيات**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · shadcn/ui · chess.js · socket.io · Prisma + SQLite · Ollama API (نموذج gemma4) · Framer Motion · Web Audio API
 
 ## 🔐 الأمان
 
