@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Board, type BoardCell } from './board'
-import { EvalBar, MoveHistory, PlayerCard } from './panels'
+import { EvalBar, PlayerCard } from './panels'
 import { AIPanel, ChatPanel, type AIMessage, type ChatMessage } from './messages'
 
 export interface ActionButtonDesc {
@@ -42,7 +42,6 @@ export function GameShell({
   onDropMove,
   showEval,
   evalCp,
-  sanHistory,
   statusText,
   statusSub,
   aiMessages,
@@ -69,7 +68,6 @@ export function GameShell({
   onDropMove: (from: string, to: string) => void
   showEval: boolean
   evalCp: number | null
-  sanHistory: string[]
   statusText: string
   statusSub?: string
   aiMessages: AIMessage[]
@@ -81,9 +79,11 @@ export function GameShell({
   footerNote?: ReactNode
   children?: ReactNode
 }) {
+  // العمود الجانبي يظهر فقط في وضع الوزير أو الأونلاين (عند وجود محادثة)
+  const hasSidebar = mode === 'ai' || (mode === 'online' && !!chat)
   return (
     <div className="mx-auto w-full max-w-6xl px-3 pb-6 pt-4" dir="rtl">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={cnGrid(hasSidebar)}>
         {/* العمود الرئيسي: الرقعة والبطاقات */}
         <div className="flex flex-col gap-3">
           <PlayerCard {...topCard} />
@@ -135,17 +135,21 @@ export function GameShell({
           </div>
         </div>
 
-        {/* العمود الجانبي */}
-        <div className="flex min-h-[420px] flex-col gap-3 lg:h-[calc(100vh-140px)] lg:min-h-0">
-          {mode === 'ai' ? (
-            <AIPanel messages={aiMessages} thinking={aiThinking} difficultyLabel={aiDifficultyLabel} modelLabel={aiModelLabel} />
-          ) : mode === 'online' && chat ? (
-            <ChatPanel messages={chat.messages} onSend={chat.onSend} myName={chat.myName} className="flex-1" />
-          ) : null}
-          <MoveHistory sanHistory={sanHistory} className="min-h-[160px] flex-1 lg:max-h-none" />
-        </div>
+        {/* العمود الجانبي (يظهر فقط عند وجود محادثة أو تعليقات الوزير) */}
+        {hasSidebar && (
+          <div className="flex min-h-[420px] flex-col gap-3 lg:h-[calc(100vh-140px)] lg:min-h-0">
+            {mode === 'ai' ? (
+              <AIPanel messages={aiMessages} thinking={aiThinking} difficultyLabel={aiDifficultyLabel} modelLabel={aiModelLabel} />
+            ) : mode === 'online' && chat ? (
+              <ChatPanel messages={chat.messages} onSend={chat.onSend} myName={chat.myName} className="flex-1" />
+            ) : null}
+          </div>
+        )}
       </div>
       {children}
     </div>
   )
 }
+
+const cnGrid = (hasSidebar: boolean) =>
+  hasSidebar ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]' : 'grid gap-4 lg:grid-cols-[minmax(0,1fr)]'

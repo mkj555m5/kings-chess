@@ -1,7 +1,6 @@
 'use client'
 
-// بطاقة اللاعب + الساعة + سجل النقلات + شريط التقييم
-import { useEffect, useRef, type JSX } from 'react'
+// بطاقة اللاعب + الساعة + شريط التقييم
 import { CapturedRow, Piece } from './pieces'
 import { formatClock } from '@/lib/game-utils'
 import { cn } from '@/lib/utils'
@@ -83,35 +82,6 @@ export function PlayerCard({
   )
 }
 
-export function MoveHistory({ sanHistory, className }: { sanHistory: string[]; className?: string }) {
-  const endRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [sanHistory.length])
-
-  const rows: { n: number; w?: string; b?: string }[] = []
-  for (let i = 0; i < sanHistory.length; i += 2) {
-    rows.push({ n: i / 2 + 1, w: sanHistory[i], b: sanHistory[i + 1] })
-  }
-
-  return (
-    <div className={cn('flex flex-col rounded-xl border border-stone-800 bg-stone-900/70', className)}>
-      <div className="border-b border-stone-800 px-3 py-2 text-xs font-bold text-stone-400">سجل النقلات</div>
-      <div className="h-full min-h-0 overflow-y-auto p-2 chess-scroll">
-        {rows.length === 0 && <div className="p-2 text-center text-xs text-stone-500">لم تبدأ المباراة بعد</div>}
-        {rows.map((r) => (
-          <div key={r.n} className="grid grid-cols-[2rem_1fr_1fr] items-center gap-1 rounded px-1 py-0.5 text-sm odd:bg-stone-800/40" dir="ltr">
-            <span className="text-xs text-stone-500">{r.n}.</span>
-            <span className="font-semibold text-stone-200">{r.w}</span>
-            <span className="font-semibold text-stone-400">{r.b || ''}</span>
-          </div>
-        ))}
-        <div ref={endRef} />
-      </div>
-    </div>
-  )
-}
-
 export function EvalBar({ evalCp, orientation }: { evalCp: number | null; orientation: 'white' | 'black' }) {
   const whitePct = evalCp === null ? 50 : Math.max(2, Math.min(98, evalToWhitePercentSafe(evalCp)))
   const fromBottom = orientation === 'white' ? whitePct : 100 - whitePct
@@ -139,5 +109,3 @@ export function BoardSkeleton({ label }: { label?: string }) {
     </div>
   )
 }
-
-export type { JSX }

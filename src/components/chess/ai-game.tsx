@@ -578,7 +578,6 @@ export function AIGame({
       onDropMove={handleDropMove}
       showEval={isAI}
       evalCp={evalCp}
-      sanHistory={view.sanHistory}
       statusText={statusText}
       statusSub={statusSub}
       aiMessages={aiMessages}

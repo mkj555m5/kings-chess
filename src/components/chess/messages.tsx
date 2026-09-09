@@ -1,11 +1,33 @@
 'use client'
 
 // لوحة تعليقات الوزير (AI) والدردشة (أونلاين)
+// التمرير ذكي وغير مزعج: يتحرك داخل صندوق المحادثة فقط (لا يسحب الصفحة كلها)،
+// ويتوقف تلقائياً إذا صعد المستخدم لقراءة رسائل سابقة
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { Piece } from './pieces'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+
+/** خطاف تمرير داخلي مهذب: يمرر صندوق الرسائل فقط ولا يمس تمرير الصفحة إطلاقاً، ويتوقف إذا صعد المستخدم للقراءة */
+function usePoliteScroll(deps: unknown[]) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const pinnedRef = useRef(true) // هل المستخدم في أسفل الصندوق؟
+
+  useEffect(() => {
+    const el = boxRef.current
+    if (el && pinnedRef.current) el.scrollTop = el.scrollHeight
+  }, deps)
+
+  const onScroll = () => {
+    const el = boxRef.current
+    if (!el) return
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+    pinnedRef.current = distance < 60
+  }
+
+  return { boxRef, onScroll }
+}
 
 export interface AIMessage {
   id: string
@@ -24,10 +46,7 @@ export function AIPanel({
   difficultyLabel: string
   modelLabel: string
 }) {
-  const endRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages.length, thinking])
+  const { boxRef, onScroll } = usePoliteScroll([messages.length, thinking])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-amber-900/40 bg-stone-900/70">
@@ -50,7 +69,7 @@ export function AIPanel({
           </div>
         )}
       </div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 chess-scroll">
+      <div ref={boxRef} onScroll={onScroll} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 chess-scroll">
         {messages.length === 0 && !thinking && (
           <div className="pt-6 text-center text-xs text-stone-600">
             تعليقات الوزير تظهر هنا أثناء المباراة…
@@ -66,7 +85,6 @@ export function AIPanel({
             </div>
           </div>
         ))}
-        <div ref={endRef} />
       </div>
     </div>
   )
@@ -92,10 +110,7 @@ export function ChatPanel({
   className?: string
 }) {
   const [text, setText] = useState('')
-  const endRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages.length])
+  const { boxRef, onScroll } = usePoliteScroll([messages.length])
 
   const send = () => {
     const t = text.trim()
@@ -107,7 +122,7 @@ export function ChatPanel({
   return (
     <div className={cn('flex min-h-0 flex-col rounded-xl border border-stone-800 bg-stone-900/70', className)}>
       <div className="border-b border-stone-800 px-3 py-2 text-xs font-bold text-stone-400">دردشة المباراة</div>
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5 chess-scroll">
+      <div ref={boxRef} onScroll={onScroll} className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5 chess-scroll">
         {messages.length === 0 && <div className="pt-4 text-center text-xs text-stone-600">قل مرحباً لخصمك!</div>}
         {messages.map((m) =>
           m.from === 'system' ? (
@@ -119,7 +134,6 @@ export function ChatPanel({
             </div>
           ),
         )}
-        <div ref={endRef} />
       </div>
       <div className="flex gap-1.5 border-t border-stone-800 p-2">
         <Input

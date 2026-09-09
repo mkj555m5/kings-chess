@@ -472,7 +472,6 @@ export function OnlineGame({
       onDropMove={handleDropMove}
       showEval={false}
       evalCp={null}
-      sanHistory={view.sanHistory}
       statusText={
         gameState.status.over
           ? reasonToAr(gameState.status.reason)
