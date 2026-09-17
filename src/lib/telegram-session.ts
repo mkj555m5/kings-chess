@@ -52,11 +52,29 @@ export async function exchangeLoginToken(token: string): Promise<TelegramSession
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
     })
-    if (!res.ok) return null
-    const data = (await res.json()) as { ok: boolean; user?: Omit<TelegramSession, 'at'> }
-    if (!data.ok || !data.user) return null
-    return saveTelegramSession(data.user)
+    return sessionFromResponse(res)
   } catch {
     return null
   }
+}
+
+/** دخول تلقائي دائم داخل تلجرام (Mini App) عبر initData الموّقعة — بلا رموز منتهية */
+export async function exchangeMiniAppSession(initData: string): Promise<TelegramSession | null> {
+  try {
+    const res = await fetch('/api/auth/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    })
+    return sessionFromResponse(res)
+  } catch {
+    return null
+  }
+}
+
+async function sessionFromResponse(res: Response): Promise<TelegramSession | null> {
+  if (!res.ok) return null
+  const data = (await res.json()) as { ok: boolean; user?: Omit<TelegramSession, 'at'> }
+  if (!data.ok || !data.user) return null
+  return saveTelegramSession(data.user)
 }

@@ -59,7 +59,10 @@ export function createTelegramBot({ core, prisma }) {
   }
 
   const kb = (rows) => ({ inline_keyboard: rows })
-  const urlBtn = (text, url) => ({ text, url })
+  // أزرار تفتح اللعبة داخل تلجرام مباشرة (Mini App) — وإذا لم يكن الرابط HTTPS (تطوير محلي) ترجع لرابط خارجي
+  const urlBtn = (text, url) => (typeof url === 'string' && url.startsWith('https://') ? { text, web_app: { url } } : { text, url })
+  // زر يفتح في المتصفح الخارجي — مفيد للمشاركة/النسخ
+  const extBtn = (text, url) => ({ text, url })
   const btn = (text, cb) => ({ text, callback_data: cb })
 
   function send(chatId, text, markup) {
@@ -142,7 +145,7 @@ export function createTelegramBot({ core, prisma }) {
       `/panel — 🛠 لوحة المالك الكاملة (أزرار تفاعلية)`,
       `/broadcast — 📢 بث إذاعي لجميع مستخدمي البوت`,
       ``,
-      `💡 الروابط من البوت تفتح الموقع <b>مع تسجيل دخول تلقائي</b> — لا حاجة لكتابة اسمك.`,
+      `💡 الروابط تفتح اللعبة <b>داخل تلجرام مباشرة</b> مع تسجيل دخول تلقائي — بدون متصفح خارجي.\n💡 أو اضغط زر ☰ (شطرنج الملوك) أسفل شاشة المحادثة للدخول الفوري في أي وقت.`,
     ].join('\n')
   }
 
@@ -211,7 +214,7 @@ export function createTelegramBot({ core, prisma }) {
         if (!link) { await send(chatId, noDb()); return }
         await send(
           chatId,
-          `🔑 <b>رابط الدخول التلقائي جاهز!</b>\n\nاضغط الزر بالأسفل وسيُفتح الموقع <b>مسجلاً باسمك</b> مباشرة — بدون كلمة مرور.\n\n⏳ صالح ٣٠ دقيقة وللاستخدام مرة واحدة.\n🌱 اسمك في اللعبة: <b>${esc(user.displayName)}</b> (غيّره بـ <code>/name</code>)`,
+          `🔑 <b>رابط الدخول التلقائي جاهز!</b>\n\nاضغط الزر بالأسفل وستُفتح اللعبة <b>داخل تلجرام مباشرة</b> مسجلاً باسمك — بدون كلمة مرور وبدون متصفح خارجي.\n💡 عند الفتح من داخل تلجرام يكون الدخول تلقائياً دائماً (الرابط احتياطي للمتصفح).\n🌱 اسمك في اللعبة: <b>${esc(user.displayName)}</b> (غيّره بـ <code>/name</code>)`,
           kb([[urlBtn('🎮 فتح الموقع وتسجيل الدخول', link)]]),
         )
         return
@@ -314,7 +317,7 @@ export function createTelegramBot({ core, prisma }) {
     const link = await authedOpenLink(user.telegramId, ch.code)
     const rows = []
     if (link) rows.push([urlBtn('🎮 العب الآن — دخول تلقائي', link)])
-    rows.push([urlBtn('📋 نسخ رابط المشاركة', plainLink)])
+    rows.push([extBtn('🌐 رابط المشاركة (المتصفح)', plainLink)])
     await send(
       chatId,
       `${intro}🔗 <b>رابط التحدي (شاركه مع أي شخص):</b>\n${plainLink}\n\n💡 أول من يفتح الرابط ينتظر، والثاني ينضم تلقائياً وتبدأ المباراة!`,
@@ -651,6 +654,14 @@ export function createTelegramBot({ core, prisma }) {
         { command: 'broadcast', description: '📢 بث إذاعي (للمالك فقط)' },
       ],
     })
+
+    // زر قائمة البوت (☰) يفتح اللعبة داخل تلجرام مباشرة كتطبيق مصغر (Mini App)
+    if (siteUrl().startsWith('https://')) {
+      const mb = await api('setChatMenuButton', {
+        menu_button: { type: 'web_app', text: '🎮 شطرنج الملوك', web_app: { url: siteUrl() } },
+      })
+      console.log(mb?.ok ? '[tg-bot] ✅ زر القائمة ☰ يفتح اللعبة داخل تلجرام (Mini App)' : '[tg-bot] ⚠️ فشل ضبط زر القائمة')
+    }
 
     const publicBase = process.env.SITE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '')
     if (process.env.TELEGRAM_POLLING === '1') {

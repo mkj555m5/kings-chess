@@ -9,7 +9,8 @@ import { OnlineGame, type OnlineGameConfig } from '@/components/chess/online-gam
 import { StatsDialog } from '@/components/chess/stats-dialog'
 import { loadLocalStats, getPlayerName, setPlayerName, type LocalStats } from '@/lib/local-stats'
 import { isSoundEnabled, setSoundEnabled } from '@/lib/sound'
-import { getTelegramSession, exchangeLoginToken, clearTelegramSession, type TelegramSession } from '@/lib/telegram-session'
+import { getTelegramSession, exchangeLoginToken, exchangeMiniAppSession, clearTelegramSession, type TelegramSession } from '@/lib/telegram-session'
+import { loadTelegramWebApp } from '@/lib/telegram-mini-app'
 import type { TimeControl } from '@/lib/game-types'
 import { useToast } from '@/hooks/use-toast'
 
@@ -38,6 +39,7 @@ export default function Home() {
   }, [])
 
   // روابط بوت تلجرام: ?auth=TOKEN (دخول تلقائي) و ?challenge=CODE (الانضمام لتحدي)
+  // + الفتح داخل تلجرام نفسه (Mini App): دخول تلقائي دائم عبر initData الموّقعة رقمياً
   useEffect(() => {
     if (!mounted || deepLinkHandled.current) return
     deepLinkHandled.current = true
@@ -45,14 +47,36 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search)
     const auth = params.get('auth')
     const challenge = (params.get('challenge') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5)
-    if (!auth && !challenge) return
 
     // تنظيف الرابط من المعاملات فوراً (حتى لا يتشارك الزائر الرمز بالمصادفة)
-    window.history.replaceState({}, '', window.location.pathname)
+    if (auth || challenge) window.history.replaceState({}, '', window.location.pathname)
 
     const run = async () => {
-      // 1) تسجيل الدخول التلقائي إن وُجد رمز
-      if (auth) {
+      // 0) هل اللعبة مفتوحة داخل تلجرام؟ (زر البوت أو زر القائمة ☰)
+      const wa = await loadTelegramWebApp()
+      try {
+        wa?.ready?.()
+        wa?.expand?.()
+      } catch {
+        // عميل تلجرام قديم — تجاهل
+      }
+      const initData = String(wa?.initData || '')
+
+      // 1) تسجيل الدخول التلقائي
+      let loggedIn = false
+      if (initData) {
+        // الأولوية: توقيع تلجرام الرقمي — دائم ولا تنتهي صلاحيته أبداً
+        const session = await exchangeMiniAppSession(initData)
+        if (session) {
+          setTgUser(session)
+          setPlayerNameState(session.name)
+          setPlayerName(session.name)
+          toast({ title: `مرحباً ${session.name} 👋`, description: 'أنت متصل عبر تلجرام — دخول تلقائي دائم', duration: 4000 })
+          loggedIn = true
+        }
+      }
+      if (!loggedIn && auth) {
+        // احتياطي: رمز سحري من رابط البوت (عند الفتح في متصفح خارجي)
         const session = await exchangeLoginToken(auth)
         if (session) {
           setTgUser(session)
@@ -60,16 +84,18 @@ export default function Home() {
           setPlayerName(session.name)
           toast({ title: `مرحباً ${session.name} 👋`, description: 'تم تسجيل دخولك تلقائياً عبر تلجرام', duration: 4000 })
         } else {
-          toast({ title: 'انتهت صلاحية رابط الدخول', description: 'افتح البوت وأرسل /login للحصول على رابط جديد', variant: 'destructive', duration: 6000 })
+          toast({ title: 'انتهت صلاحية رابط الدخول', description: 'افتح البوت وأرسل /login للحصول على رابط جديد — أو استخدم زر ☰ داخل تلجرام', variant: 'destructive', duration: 6000 })
         }
       }
 
-      // 2) الانضمام لتحدي من البوت
-      if (challenge && challenge.length === 5) {
+      // 2) الانضمام لتحدي من البوت (من الرابط أو من start_param داخل تلجرام)
+      const startParam = String(wa?.initDataUnsafe?.start_param || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5)
+      const code = challenge.length === 5 ? challenge : startParam.length === 5 ? startParam : ''
+      if (code.length === 5) {
         let tc: TimeControl = 'none'
         let fromName = 'صديقك'
         try {
-          const res = await fetch(`/api/telegram/challenge?code=${challenge}`)
+          const res = await fetch(`/api/telegram/challenge?code=${code}`)
           const data = await res.json()
           if (data?.ok && data.challenge) {
             tc = (['none', 'blitz3', 'blitz5', 'rapid10'].includes(data.challenge.timeControl) ? data.challenge.timeControl : 'none') as TimeControl
@@ -87,7 +113,7 @@ export default function Home() {
         setPlayerNameState(name)
         setPlayerName(name)
         toast({ title: `⚔️ تحدي من ${fromName}`, description: 'جارٍ الدخول للمباراة…', duration: 4000 })
-        setView({ screen: 'online', config: { playerName: name, timeControl: tc, flow: 'challenge', joinCode: challenge } })
+        setView({ screen: 'online', config: { playerName: name, timeControl: tc, flow: 'challenge', joinCode: code } })
       }
     }
 
