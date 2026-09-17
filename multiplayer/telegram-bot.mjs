@@ -2,6 +2,7 @@
 // - تسجيل دخول تلقائي للموقع عبر روابط سحرية أحادية الاستخدام
 // - إنشاء تحديات وإرسالها بأمر واحد مع روابط مباشرة للعب
 // - لوحة مالك كاملة: إحصائيات، غرف نشطة، مستخدمون، بث إذاعي
+// - يرد على الأوامر فقط — يتجاهل أي رسالة عادية بصمت (بدون إزعاج في المجموعات)
 // - يعمل داخل server.mjs (Railway) عبر Webhook، أو Polling محلياً (TELEGRAM_POLLING=1)
 import { createHash, randomBytes } from 'node:crypto'
 import { coreBus } from './game-core.mjs'
@@ -157,11 +158,8 @@ export function createTelegramBot({ core, prisma }) {
     const chatId = msg.chat?.id
     if (!chatId) return
     const text = (msg.text || msg.caption || '').trim()
-    const from = msg.from
-    const user = await upsertUser(from).catch(() => null)
     if (!text) return
-
-    if (!prisma) { await send(chatId, noDb()); return }
+    const from = msg.from
 
     // وضع البث الإذاعي (مالك)
     if (broadcastMode.get(chatId) && (await isOwner(from))) {
@@ -180,14 +178,11 @@ export function createTelegramBot({ core, prisma }) {
       return
     }
 
-    if (!text.startsWith('/')) {
-      await send(
-        chatId,
-        `👋 مرحباً <b>${esc(user?.displayName || from.first_name || 'لاعب')}</b>!\n\nاستخدم الأوامر أدناه — اضغط على /start لعرض القائمة الكاملة، أو /challenge لإنشاء تحدي فوراً.`,
-        kb([[btn('⚔️ تحدَّ الآن', 'go:challenge'), btn('🔑 رابط دخول', 'go:login')]]),
-      )
-      return
-    }
+    // 🔇 البوت يرد على الأوامر فقط — أي رسالة عادية (خصوصاً في المجموعات) تُتجاهل بصمت دون أي رد
+    if (!text.startsWith('/')) return
+
+    const user = await upsertUser(from).catch(() => null)
+    if (!prisma) { await send(chatId, noDb()); return }
 
     const parts = text.split(/\s+/)
     const cmd = parts[0].replace(/@[\w_]+$/, '').slice(1).toLowerCase()
@@ -272,6 +267,9 @@ export function createTelegramBot({ core, prisma }) {
         return
       }
       default: {
+        // في المجموعات نتجاهل الأوامر غير المعروفة بصمت (غالباً أوامر بوتات أخرى مثل /gif) — بدون إزعاج
+        const isGroup = msg.chat?.type === 'group' || msg.chat?.type === 'supergroup'
+        if (isGroup) return
         await send(chatId, `❓ أمر غير معروف: <code>${esc(cmd)}</code>\n\nاضغط /help لعرض كل الأوامر.`)
       }
     }
