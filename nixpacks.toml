@@ -1,11 +1,14 @@
 # ⚙️ إعدادات بناء Nixpacks (يستخدمها Railway)
 #
 # لماذا هذا الملف؟
-#   Node.js 18 أُزيل نهائياً من nixpkgs (انتهى دعمه في أبريل 2025)، وأي بناء
-#   بدون تحديد إصدار كان يفترض Node 18 فيفشل بخطأ:
-#   "Node.js 18.x has reached End-Of-Life and has been removed"
+#   1) Node.js 18 أُزيل نهائياً من nixpkgs (انتهى دعمه في أبريل 2025)، وأي بناء
+#      بدون تحديد إصدار كان يفترض Node 18 فيفشل بخطأ:
+#      "Node.js 18.x has reached End-Of-Life and has been removed"
+#      → نثبّت Node.js 22 LTS صراحةً.
+#   2) وجود bun.lock في المستودع يجعل Nixpacks يستخدم "bun i --no-save"
+#      لتثبيت الحزم → يجب تثبيت bun نفسه صراحةً وإلا فشل بـ "bun: command not found".
 #
 # ملاحظة: بدون "..." تستبدل هذه القائمة الحزم المكتشفة تلقائياً بالكامل،
-# فلا يُثبَّت nodejs-18_x الحذوف إطلاقاً.
+# لذلك ذكرنا كل ما نحتاجه يدوياً (npm/npx مدمجان داخل حزمة nodejs نفسها).
 [phases.setup]
-nixPkgs = ["nodejs_22", "openssl"]
+nixPkgs = ["nodejs_22", "openssl", "bun"]
