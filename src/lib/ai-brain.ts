@@ -136,6 +136,8 @@ function pickEngineMove(ranked: RankedMove[], difficulty: Difficulty): RankedMov
 }
 
 // اختيار نقلة الذكاء الاصطناعي مع تعليق محتمل
+// candidates: مرشحون محسوبون مسبقاً في متصفح اللاعب (يُلغي استدعاء المحرك على الخادم —
+// ضروري لحدود CPU في Cloudflare)؛ إن لم تُمرر يُحسب المحرك على الخادم كالسابق
 export async function getAIMoveWithComment(params: {
   fen: string
   difficulty: Difficulty
@@ -143,13 +145,16 @@ export async function getAIMoveWithComment(params: {
   playerColor: PieceColor
   playerName: string
   moveNumber: number
+  candidates?: RankedMove[]
 }): Promise<AIChoiceResult> {
   const { fen, difficulty } = params
-  const depth = ENGINE_DEPTH[difficulty]
-  const ranked = getRankedMoves(fen, depth, 5, {
-    maxNodes: difficulty === 'hard' ? 160000 : 90000,
-    deadlineMs: difficulty === 'hard' ? 3000 : 1800,
-  })
+  const ranked: RankedMove[] =
+    params.candidates && params.candidates.length > 0
+      ? [...params.candidates].sort((a, b) => b.score - a.score)
+      : getRankedMoves(fen, ENGINE_DEPTH[difficulty], 5, {
+          maxNodes: difficulty === 'hard' ? 160000 : 90000,
+          deadlineMs: difficulty === 'hard' ? 3000 : 1800,
+        })
   if (ranked.length === 0) throw new Error('no legal moves')
 
   const enginePick = pickEngineMove(ranked, difficulty)

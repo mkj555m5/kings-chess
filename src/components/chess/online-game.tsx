@@ -3,8 +3,7 @@
 // شاشة اللعب الأونلاين ضد لاعبين حقيقيين عبر socket.io
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
-import type { Socket } from 'socket.io-client'
-import { connectGameSocket } from '@/lib/socket-client'
+import { connectGameConnection, type GameConnection } from '@/lib/socket-client'
 import { GameShell, type ActionButtonDesc, type PlayerCardData } from './game-shell'
 import { PromotionDialog, GameOverDialog, DrawOfferDialog } from './dialogs'
 import type { ChatMessage } from './messages'
@@ -50,7 +49,7 @@ export function OnlineGame({
   onExit: () => void
   onStats: (s: LocalStats) => void
 }) {
-  const socketRef = useRef<Socket | null>(null)
+  const socketRef = useRef<GameConnection | null>(null)
   const [phase, setPhase] = useState<Phase>('connecting')
   const [error, setError] = useState<string | null>(null)
   const [roomCode, setRoomCode] = useState('')
@@ -78,9 +77,9 @@ export function OnlineGame({
   // بدء الاتصال وتسجيل الأحداث
   useEffect(() => {
     let cancelled = false
-    let socket: Socket | null = null
+    let socket: GameConnection | null = null
 
-    const setup = (s: Socket) => {
+    const setup = (s: GameConnection) => {
     s.on('connect', () => {
       if (cancelled) return
       setError(null)
@@ -252,7 +251,7 @@ export function OnlineGame({
 
     }
 
-    void connectGameSocket().then((s) => {
+    void connectGameConnection().then((s) => {
       if (cancelled) {
         s.disconnect()
         return

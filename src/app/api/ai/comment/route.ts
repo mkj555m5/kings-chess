@@ -23,15 +23,20 @@ export async function POST(req: NextRequest) {
     }
 
     // تقييم تأثير نقلة اللاعب من وجهة نظر الذكاء الاصطناعي
+    // (قد يأتي محسوباً من متصفح اللاعب في وضع Cloudflare منخفض CPU)
     let evalSwingCp = 0
-    try {
-      const beforeW = quickEval(fenBefore) // من منظور الأبيض
-      const afterW = quickEval(fenAfter)
-      const beforeAI = aiColor === 'w' ? beforeW : -beforeW
-      const afterAI = aiColor === 'w' ? afterW : -afterW
-      evalSwingCp = afterAI - beforeAI
-    } catch {
-      evalSwingCp = 0
+    if (typeof body.evalSwingCp === 'number' && Number.isFinite(body.evalSwingCp)) {
+      evalSwingCp = Math.max(-5000, Math.min(5000, Math.round(body.evalSwingCp)))
+    } else {
+      try {
+        const beforeW = quickEval(fenBefore) // من منظور الأبيض
+        const afterW = quickEval(fenAfter)
+        const beforeAI = aiColor === 'w' ? beforeW : -beforeW
+        const afterAI = aiColor === 'w' ? afterW : -afterW
+        evalSwingCp = afterAI - beforeAI
+      } catch {
+        evalSwingCp = 0
+      }
     }
 
     // الوزير لا يعلق في كل مرة - قرارات احتمالية

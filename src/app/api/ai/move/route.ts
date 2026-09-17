@@ -22,6 +22,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'اللعبة انتهت بالفعل' }, { status: 400 })
     }
 
+    // مرشحون محسوبون في متصفح اللاعب (مسار Cloudflare منخفض CPU) — تحقق من صلاحيتهم قبل الاستخدام
+    const candidates = Array.isArray(body.candidates)
+      ? body.candidates
+          .slice(0, 8)
+          .filter(
+            (c: unknown): c is { from: string; to: string; promotion?: string; san: string; score: number } =>
+              !!c && typeof c === 'object' &&
+              typeof (c as Record<string, unknown>).from === 'string' &&
+              typeof (c as Record<string, unknown>).to === 'string' &&
+              typeof (c as Record<string, unknown>).san === 'string' &&
+              typeof (c as Record<string, unknown>).score === 'number' &&
+              Number.isFinite((c as Record<string, unknown>).score as number),
+          )
+          .map((c: { from: string; to: string; promotion?: string; san: string; score: number }) => ({
+            from: String(c.from).slice(0, 2),
+            to: String(c.to).slice(0, 2),
+            promotion: typeof c.promotion === 'string' && /^[qrbn]$/.test(c.promotion) ? c.promotion : undefined,
+            san: String(c.san).slice(0, 12),
+            score: Math.max(-20000, Math.min(20000, Math.round(c.score))),
+          }))
+          .filter((c: { from: string; to: string }) => {
+            try {
+              const ok = !!chess.move({ from: c.from, to: c.to, promotion: c.promotion })
+              if (ok) chess.undo() // تحقق فقط - أعد اللوحة لوضعها
+              return ok
+            } catch {
+              return false
+            }
+          })
+          .map((c: { from: string; to: string; promotion?: string }) => ({ ...c }))
+      : undefined
+
     const result = await getAIMoveWithComment({
       fen,
       difficulty,
@@ -29,6 +61,7 @@ export async function POST(req: NextRequest) {
       playerColor,
       playerName,
       moveNumber,
+      candidates,
     })
 
     // طبّق النقلة لحساب التقييم بعد الحركة

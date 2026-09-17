@@ -64,3 +64,8 @@ db/*.db
 *.db-journal
 examples/
 dev-restart.log
+
+# Cloudflare
+.open-next/
+.wrangler/
+cloudflare/realtime/.wrangler/

@@ -13,8 +13,16 @@ import {
   type TimeControl,
 } from '@/lib/game-types'
 import { colorNameAr, deriveView, materialDiff, timeControlMs } from '@/lib/game-utils'
+import { getRankedMoves } from '@/lib/chess-engine'
 import { sfx } from '@/lib/sound'
 import { recordGame, type LocalStats } from '@/lib/local-stats'
+
+// ميزانية المحرك تعمل في متصفح اللاعب (مناسبة لحدود CPU المجانية في Cloudflare)
+const ENGINE_BUDGET: Record<Difficulty, { depth: number; maxNodes: number; deadlineMs: number }> = {
+  easy: { depth: 1, maxNodes: 20000, deadlineMs: 600 },
+  medium: { depth: 2, maxNodes: 60000, deadlineMs: 1500 },
+  hard: { depth: 3, maxNodes: 120000, deadlineMs: 2500 },
+}
 
 const AI_MODEL_LABEL = 'نموذج gemma4'
 
@@ -331,21 +339,39 @@ export function AIGame({
       }
       setAiThinking(false)
       aiBusyRef.current = false
-    }, 20000)
+    }, 25000)
 
-    void fetch('/api/ai/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        fen,
-        difficulty: config.difficulty,
-        historySan,
-        playerColor,
-        playerName,
-        moveNumber,
-      }),
-    })
+    // حساب المرشحين محلياً في المتصفح (بعد رسم واجهة التفكير) ثم إرسالهم للخادم
+    // ليختار gemma4 النقلة الاستراتيجية ويكتب تعليقه — بهذا يعمل على الخطة المجانية في Cloudflare
+    const computeTimer = setTimeout(() => {
+      let candidates: { from: string; to: string; promotion?: string; san: string; score: number }[] = []
+      try {
+        const budget = ENGINE_BUDGET[config.difficulty]
+        candidates = getRankedMoves(fen, budget.depth, 6, { maxNodes: budget.maxNodes, deadlineMs: budget.deadlineMs }).map((c) => ({
+          from: c.from,
+          to: c.to,
+          promotion: c.promotion,
+          san: c.san,
+          score: c.score,
+        }))
+      } catch (e) {
+        console.error('[ai-game] candidate computation failed', e)
+      }
+
+      void fetch('/api/ai/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          fen,
+          difficulty: config.difficulty,
+          historySan,
+          playerColor,
+          playerName,
+          moveNumber,
+          candidates,
+        }),
+      })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((data) => {
         clearTimeout(timeout)
@@ -370,8 +396,10 @@ export function AIGame({
         setAiThinking(false)
         aiBusyRef.current = false
       })
+    }, 50) // مهلة قصيرة لرسم واجهة "يفكر…" قبل الحساب الثقيل في المتصفح
 
     return () => {
+      clearTimeout(computeTimer)
       clearTimeout(timeout)
       controller.abort()
     }

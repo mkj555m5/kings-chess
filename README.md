@@ -57,9 +57,51 @@ npm run build
 npm start
 ```
 
-## ☁️ النشر على Railway
+## ☁️ النشر على Cloudflare Workers (موصى به — مجاني)
 
-التطبيق جاهز لـ Railway بالكامل (خادم واحد يخدم الواجهة + socket.io معاً):
+التطبيق جاهز بالكامل لـ Cloudflare: الواجهة عبر **OpenNext**، اللعب الأونلاين عبر **Durable Objects + SSE**، والإحصائيات العالمية عبر **D1**. المحرك الحسابي يعمل في متصفح اللاعب ليبقى الاستهلاك ضمن حدود الخطة المجانية.
+
+### الخطوات
+
+```bash
+# 0) تسجيل الدخول (مرة واحدة)
+npx wrangler login
+
+# 1) إنشاء قاعدة بيانات D1 وتطبيق المخطط (للإحصائيات العالمية)
+npm run cf:db:init
+# ثم انسخ database_id من المخرجات وضعه في wrangler.jsonc
+
+# 2) نشر خدمة الوقت الحقيقي (الغرف + المباراة السريعة)
+npm run cf:deploy:rt
+# ستجد رابط الخدمة في المخرجات مثل:
+# https://kings-chess-rt.<حسابك>.workers.dev
+
+# 3) ضع الرابط في wrangler.jsonc → vars.REALTIME_URL ثم انشر التطبيق
+npm run cf:deploy:app
+
+# 4) مفتاح Ollama (سر - لا يوضع في الملفات)
+npx wrangler secret put OLLAMA_API_KEY
+```
+
+> **إن كان لديك نطاق مخصص على Cloudflare**: يمكنك استخدام رابط نسبي بدلاً من workers.dev — أضف route لنمط `<نطاقك>/rt/*` في `cloudflare/realtime/wrangler.jsonc` واترك `REALTIME_URL` فارغة (الافتراضي `/rt`).
+
+### متغيرات بيئة Cloudflare
+| المتغير | القيمة | ملاحظات |
+|---------|--------|---------|
+| `OLLAMA_API_KEY` | مفتاحك من ollama.com | **سر** — يضاف بـ `wrangler secret put` |
+| `AI_MODEL` | `gemma4` | مضبوط في wrangler.jsonc (افتراضي) |
+| `OLLAMA_BASE_URL` | `https://ollama.com` | مضبوط (افتراضي) |
+| `REALTIME_URL` | رابط خدمة kings-chess-rt | من خطوة 2 أعلاه |
+| `CF_DEPLOY` | `1` | مضبوط تلقائياً في wrangler.jsonc |
+
+### ملاحظات
+- معاينة محلية للحزمة: `npm run cf:preview`
+- أرخص تشغيل للذكاء الاصطناعي: محرك التحليل يعمل في متصفح اللاعب، والخادم يستدعي gemma4 فقط
+- الإحصائيات العالمية تحتاج قاعدة D1 (خطوة 1) — بدونها تعمل اللعبة كاملة والإحصائيات تظهر صفرية
+
+## 🚂 النشر على Railway (بديل)
+
+التطبيق جاهز لـ Railway أيضاً (خادم واحد يخدم الواجهة + socket.io معاً):
 
 1. ارفع الكود إلى GitHub (المستودع جاهز بالأسفل)
 2. على [Railway](https://railway.app): **New Project → Deploy from GitHub repo** واختر المستودع
@@ -97,11 +139,14 @@ npm start
 ├── multiplayer/
 │   └── game-core.mjs              # نواة الخادم الموثوق (غرف + تحقق + ساعات)
 ├── mini-services/chess-server/    # خدمة الأونلاين للتطوير (منفذ 3003)
-├── server.mjs                     # خادم الإنتاج الموحد (Next + socket.io)
-└── prisma/schema.prisma           # سجل المباريات
+├── cloudflare/realtime/           # خدمة الوقت الحقيقي لـ Cloudflare (Durable Objects + SSE)
+├── server.mjs                     # خادم الإنتاج الموحد لـ Railway (Next + socket.io)
+├── wrangler.jsonc + open-next.config.ts  # إعداد نشر Cloudflare
+├── db/schema.sql                  # مخطط D1 للإحصائيات على Cloudflare
+└── prisma/schema.prisma           # سجل المباريات (تطوير/Railway)
 ```
 
-**التقنيات**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · shadcn/ui · chess.js · socket.io · Prisma + SQLite · Ollama API (نموذج gemma4) · Framer Motion · Web Audio API
+**التقنيات**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · shadcn/ui · chess.js · socket.io (Railway) · Cloudflare Workers + Durable Objects + D1 (Cloudflare) · OpenNext · Ollama API (نموذج gemma4) · Framer Motion · Web Audio API
 
 ## 🔐 الأمان
 
