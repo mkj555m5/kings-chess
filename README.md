@@ -119,11 +119,14 @@ npx wrangler secret put OLLAMA_API_KEY
    | `OLLAMA_API_KEY` | مفتاحك من [ollama.com](https://ollama.com) | إلزامي للعب ضد الوزير وتعليقاته |
    | `OLLAMA_BASE_URL` | `https://ollama.com` | اختياري (هو الافتراضي — غيّره فقط لو تستضيف Ollama محلياً) |
    | `AI_MODEL` | `gemma4` | اختياري (هو الافتراضي) |
-   | `DATABASE_URL` | `file:./db/custom.db` | اختياري (هو الافتراضي) |
+   | `DATABASE_URL` | `file:/app/db/custom.db` | اختياري — يُضبط تلقائياً أثناء البناء/التشغيل إن لم تضع شيئاً |
    | `TELEGRAM_BOT_TOKEN` | رمز البوت من [@BotFather](https://t.me/BotFather) | لتفعيل بوت تلجرام |
    | `TELEGRAM_OWNER_ID` | معرّفك الرقمي (من `/myid` في البوت) | يفعّل لوحة المالك `/panel` — عدة معرفات بفواصل |
    | `SITE_URL` | رابط موقعك على Railway | اختياري — يُكتشف تلقائياً من `RAILWAY_PUBLIC_DOMAIN` |
-4. Railway سيكتشف Nixpacks تلقائياً ويشغّل `npm run build` ثم `npm start`
+4. البناء والتشغيل **آليّان بالكامل** عبر ملفي `nixpacks.toml` + `railway.json`:
+   - يُثبَّت **Node.js 22 LTS** صراحةً (دعم Node 18 انتهى وأُزيل من nixpkgs — بدون هذا التثبيت يفشل البناء بخطأ "Node.js 18.x has reached End-Of-Life")
+   - البناء: `prisma generate` ← `prisma db push` ← `next build`
+   - التشغيل: `prisma db push` ← `server.mjs` (Next + socket.io + بوت تلجرام)
 5. Generate Domain وافتح رابطك! 🎉
 
 ### 🤖 إعداد بوت تلجرام (خطوة بخطوة)
@@ -138,7 +141,7 @@ npx wrangler secret put OLLAMA_API_KEY
 
 > 💡 **للتشغيل المحلي بدون رابط عام**: ضع `TELEGRAM_POLLING=1` في `.env` وسيعمل البوت بوضع Polling.
 
-> 💡 **ملاحظة**: نظام الملفات على Railway مؤقت — إحصائيات المنصة العالمية تُعاد للتصفير عند إعادة النشر. للحفظ الدائم أضف Volume موصولاً بمسار `/app/db`. الإحصائيات الشخصية محفوظة في متصفح اللاعب ولا تتأثر.
+> 💡 **ملاحظة**: نظام الملفات على Railway مؤقت — إحصائيات المنصة العالمية تُعاد للتصفير عند إعادة النشر. للحفظ الدائم أضف **Volume** موصولاً بمسار `/app/db` (نفس المسار الافتراضي لـ `DATABASE_URL`). الإحصائيات الشخصية محفوظة في متصفح اللاعب ولا تتأثر.
 
 > 🤖 يكتشف التطبيق بيئة Railway تلقائياً (عبر `RAILWAY_ENVIRONMENT`) ويضبط اتصال socket.io على نفس النطاق بمسار `/socket.io` — بلا أي إعداد إضافي.
 

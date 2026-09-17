@@ -1,0 +1,11 @@
+# ⚙️ إعدادات بناء Nixpacks (يستخدمها Railway)
+#
+# لماذا هذا الملف؟
+#   Node.js 18 أُزيل نهائياً من nixpkgs (انتهى دعمه في أبريل 2025)، وأي بناء
+#   بدون تحديد إصدار كان يفترض Node 18 فيفشل بخطأ:
+#   "Node.js 18.x has reached End-Of-Life and has been removed"
+#
+# ملاحظة: بدون "..." تستبدل هذه القائمة الحزم المكتشفة تلقائياً بالكامل،
+# فلا يُثبَّت nodejs-18_x الحذوف إطلاقاً.
+[phases.setup]
+nixPkgs = ["nodejs_22", "openssl"]
