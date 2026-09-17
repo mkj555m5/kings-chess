@@ -21,9 +21,11 @@ export interface PlayerCardData {
   capturedPieces: string[]
   clockMs: number | null
   clockActive: boolean
+  materialLead?: number
   isAI?: boolean
   connected?: boolean
   thinkBadge?: string | null
+  avatarTgId?: string | null // معرف تلجرام لعرض صورة الملف الشخصي
 }
 
 export function GameShell({
@@ -74,7 +76,7 @@ export function GameShell({
   aiThinking: boolean
   aiDifficultyLabel: string
   aiModelLabel: string
-  chat?: { messages: ChatMessage[]; onSend: (t: string) => void; myName: string; myColor?: 'white' | 'black' }
+  chat?: { messages: ChatMessage[]; onSend: (t: string) => void; myName: string; myColor?: 'white' | 'black'; playerTgIds?: { white?: string | null; black?: string | null } }
   actions: ActionButtonDesc[]
   footerNote?: ReactNode
   children?: ReactNode
@@ -141,7 +143,7 @@ export function GameShell({
             {mode === 'ai' ? (
               <AIPanel messages={aiMessages} thinking={aiThinking} difficultyLabel={aiDifficultyLabel} modelLabel={aiModelLabel} />
             ) : mode === 'online' && chat ? (
-              <ChatPanel messages={chat.messages} onSend={chat.onSend} myName={chat.myName} myColor={chat.myColor} className="flex-1" />
+              <ChatPanel messages={chat.messages} onSend={chat.onSend} myName={chat.myName} myColor={chat.myColor} playerTgIds={chat.playerTgIds} className="flex-1" />
             ) : null}
           </div>
         )}

@@ -4,7 +4,7 @@
 // التمرير ذكي وغير مزعج: يتحرك داخل صندوق المحادثة فقط (لا يسحب الصفحة كلها)،
 // ويتوقف تلقائياً إذا صعد المستخدم لقراءة رسائل سابقة
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Piece } from './pieces'
+import { Piece, TelegramAvatar } from './pieces'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -159,12 +159,14 @@ export function ChatPanel({
   onSend,
   myName,
   myColor,
+  playerTgIds,
   className,
 }: {
   messages: ChatMessage[]
   onSend: (text: string) => void
   myName: string
   myColor?: 'white' | 'black'
+  playerTgIds?: { white?: string | null; black?: string | null } // لعرض صور تلجرام في الأفاتار
   className?: string
 }) {
   const [text, setText] = useState('')
@@ -233,12 +235,16 @@ export function ChatPanel({
               {/* الصورة الرمزية */}
               <div
                 className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border p-0.5',
+                  'flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border p-0.5',
                   m.from === 'white' ? 'border-stone-400/40 bg-stone-300' : 'border-stone-700 bg-stone-900',
                 )}
                 title={m.name}
               >
-                <Piece type="p" color={m.from === 'white' ? 'w' : 'b'} />
+                <TelegramAvatar
+                  telegramId={playerTgIds?.[m.from] || null}
+                  color={m.from === 'white' ? 'w' : 'b'}
+                  pieceType="p"
+                />
               </div>
               {/* الفقاعة (في RTL: محاذاة يسار = رسائلي، يسار = رسائل الخصم المرآة) */}
               <div className={cn('flex max-w-[80%] flex-col', isMine ? 'items-end' : 'items-start')}>

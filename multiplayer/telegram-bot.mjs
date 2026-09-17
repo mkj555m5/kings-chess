@@ -39,6 +39,7 @@ export function createTelegramBot({ core, prisma }) {
   const broadcastMode = new Map() // chatId -> true (مالك يجهز رسالة بث)
   const pendingBroadcast = new Map() // chatId -> نص الرسالة
   let botUsername = ''
+  let botId = 0
   let started = false
 
   // ============ Telegram API ============
@@ -153,10 +154,29 @@ export function createTelegramBot({ core, prisma }) {
   const mainKb = (authLink) => kb([authLink ? [urlBtn('🎮 افتح الموقع — دخول تلقائي', authLink)] : [], [btn('⚔️ تحدَّ الآن', 'go:challenge'), btn('🔑 رابط دخول جديد', 'go:login')]].filter((r) => r.length))
 
   // ============ معالجة الرسائل ============
+  async function sendGroupWelcome(chatId) {
+    const atCmd = (c) => (botUsername ? `<code>/${c}@${esc(botUsername)}</code>` : `<code>/${c}</code>`)
+    await send(
+      chatId,
+      `👑 <b>شطرنج الملوك وصل إلى المجموعة!</b>\n\n⚔️ اكتب <code>/challenge</code> لإنشاء تحدي شطرنج ومشاركة الرابط.\n⏱ مع الوقت: <code>/challenge 3</code> أو <code>/challenge 5</code> أو <code>/challenge 10</code>\n👤 لتحدّي عضو بالاسم: <code>/challenge @اسمه</code>\n\n💡 <b>مهم في المجموعات:</b> إذا لم يستجب البوت لأمر بسيط اكتبه بصيغة ${atCmd('challenge')} — تلجرام يوجّه الأمر للبوت مباشرة.
+🎮 وللدخول للعبة في أي وقت اضغط زر ☰ أسفل الشاشة.`,
+      kb([[btn('⚔️ كيف أتحدّى؟', 'go:challenge'), btn('🎮 افتح اللعبة', 'go:open')]]),
+    )
+  }
+
   async function handleMessage(msg) {
     if (!msg?.from || msg.from.is_bot) return
     const chatId = msg.chat?.id
     if (!chatId) return
+
+    // رسالة خدمة: أُضيف البوت إلى مجموعة — رحّب (تعمل حتى مع تفعيل Privacy Mode لأن رسائل الخدمة تصل دائماً)
+    if (Array.isArray(msg.new_chat_members) && msg.new_chat_members.length) {
+      if (msg.new_chat_members.some((m) => String(m?.id) === String(botId))) {
+        await sendGroupWelcome(chatId).catch(() => {})
+      }
+      return
+    }
+
     const text = (msg.text || msg.caption || '').trim()
     if (!text) return
     const from = msg.from
@@ -179,7 +199,14 @@ export function createTelegramBot({ core, prisma }) {
     }
 
     // 🔇 البوت يرد على الأوامر فقط — أي رسالة عادية (خصوصاً في المجموعات) تُتجاهل بصمت دون أي رد
-    if (!text.startsWith('/')) return
+    if (!text.startsWith('/')) {
+      // استثناء: إن ذُكر اسم البوت صراحةً (@منشن) فهذا استدعاء مقصود — أجب بإرشاد موجز
+      const isGroupChat = msg.chat?.type === 'group' || msg.chat?.type === 'supergroup'
+      if (isGroupChat && botUsername && text.toLowerCase().includes(`@${botUsername.toLowerCase()}`)) {
+        await send(chatId, `👑 بوت شطرنج الملوك في خدمتك!\n⚔️ اكتب <code>/challenge</code> لإنشاء تحدي شطرنج فوراً.`)
+      }
+      return
+    }
 
     const user = await upsertUser(from).catch(() => null)
     if (!prisma) { await send(chatId, noDb()); return }
@@ -578,7 +605,15 @@ export function createTelegramBot({ core, prisma }) {
       }
       if (data === 'go:challenge') {
         await api('answerCallbackQuery', { callback_query_id: cb.id })
-        await send(chatId, '⚔️ اختر وقت المباراة ثم أرسل الأمر:\n\n<code>/challenge</code> — بدون وقت\n<code>/challenge 3</code> — سريع ٣ دقائق\n<code>/challenge 5</code> — سريع ٥ دقائق\n<code>/challenge 10</code> — ١٠ دقائق\n<code>/challenge @user 3</code> — تحدي مستخدم معين')
+        const at = botUsername && (cb.message?.chat?.type === 'group' || cb.message?.chat?.type === 'supergroup') ? `\n\n💡 أنت في مجموعة — الأضمن أن تكتب: <code>/challenge@${esc(botUsername)}</code>` : ''
+        await send(chatId, `⚔️ اختر وقت المباراة ثم أرسل الأمر:\n\n<code>/challenge</code> — بدون وقت\n<code>/challenge 3</code> — سريع ٣ دقائق\n<code>/challenge 5</code> — سريع ٥ دقائق\n<code>/challenge 10</code> — ١٠ دقائق\n<code>/challenge @user 3</code> — تحدي مستخدم معين${at}`)
+        return
+      }
+      if (data === 'go:open') {
+        await api('answerCallbackQuery', { callback_query_id: cb.id })
+        const u = await upsertUser(from).catch(() => null)
+        const link = u ? await authedOpenLink(u.telegramId) : null
+        await send(chatId, link ? '🎮 اللعبة داخل تلجرام مباشرة:' : '🎮 افتح اللعبة من زر ☰ أسفل الشاشة.', link ? kb([[urlBtn('▶️ فتح اللعبة الآن', link)]]) : undefined)
         return
       }
       if (data === 'go:login') {
@@ -635,6 +670,7 @@ export function createTelegramBot({ core, prisma }) {
       return false
     }
     botUsername = meRes.result.username
+    botId = meRes.result.id
     started = true
     console.log(`[tg-bot] ✅ متصل باسم @${botUsername}`)
 
@@ -650,6 +686,17 @@ export function createTelegramBot({ core, prisma }) {
         { command: 'help', description: '📖 دليل الأوامر الكامل' },
         { command: 'panel', description: '🛠 لوحة المالك (للمالك فقط)' },
         { command: 'broadcast', description: '📢 بث إذاعي (للمالك فقط)' },
+      ],
+    })
+
+    // قائمة أوامر مختصرة داخل المجموعات (تظهر عند كتابة / في المجموعة)
+    await api('setMyCommands', {
+      scope: { type: 'all_group_chats' },
+      commands: [
+        { command: 'challenge', description: '⚔️ إنشاء تحدي شطرنج' },
+        { command: 'start', description: '👑 قائمة شطرنج الملوك' },
+        { command: 'stats', description: '📊 إحصائياتك' },
+        { command: 'help', description: '📖 دليل الأوامر' },
       ],
     })
 

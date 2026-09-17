@@ -50,6 +50,7 @@ export interface AIGameConfig {
   playerName: string
   whiteName?: string
   blackName?: string
+  telegramId?: string | null // لعرض صورة الملف الشخصي من تلجرام
 }
 
 export function AIGame({
@@ -547,6 +548,8 @@ export function AIGame({
       isAI: isAI && !isPlayer,
       connected: true,
       thinkBadge: isAI && aiThinking && view.turn === aiColor ? 'يفكر…' : null,
+      // صورة تلجرام تظهر للاعب البشري فقط (الوزير لا حساب له)
+      avatarTgId: isPlayer ? config.telegramId || null : null,
     }
   }
 

@@ -8,7 +8,7 @@ import { AIGame, type AIGameConfig } from '@/components/chess/ai-game'
 import { OnlineGame, type OnlineGameConfig } from '@/components/chess/online-game'
 import { StatsDialog } from '@/components/chess/stats-dialog'
 import { loadLocalStats, getPlayerName, setPlayerName, type LocalStats } from '@/lib/local-stats'
-import { isSoundEnabled, setSoundEnabled } from '@/lib/sound'
+import { isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume } from '@/lib/sound'
 import { getTelegramSession, exchangeLoginToken, exchangeMiniAppSession, clearTelegramSession, type TelegramSession } from '@/lib/telegram-session'
 import { loadTelegramWebApp } from '@/lib/telegram-mini-app'
 import type { TimeControl } from '@/lib/game-types'
@@ -21,6 +21,7 @@ export default function Home() {
   const [playerName, setPlayerNameState] = useState('')
   const [localStats, setLocalStats] = useState<LocalStats | null>(null)
   const [soundOn, setSoundOn] = useState(true)
+  const [volume, setVolume] = useState(0.6)
   const [statsOpen, setStatsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [tgUser, setTgUser] = useState<TelegramSession | null>(null)
@@ -33,6 +34,7 @@ export default function Home() {
       setPlayerNameState(getPlayerName())
       setLocalStats(loadLocalStats())
       setSoundOn(isSoundEnabled())
+      setVolume(getSoundVolume())
       setTgUser(getTelegramSession())
     }, 0)
     return () => clearTimeout(t)
@@ -139,6 +141,11 @@ export default function Home() {
     })
   }, [])
 
+  const changeVolume = useCallback((v: number) => {
+    setVolume(v)
+    setSoundVolume(v)
+  }, [])
+
   return (
     <main className="min-h-screen">
       {view.screen === 'menu' && (
@@ -147,6 +154,8 @@ export default function Home() {
           onPlayerNameChange={updatePlayerName}
           soundOn={soundOn}
           onToggleSound={toggleSound}
+          volume={volume}
+          onVolumeChange={changeVolume}
           tgUser={tgUser}
           onTelegramLogout={logoutTelegram}
           localStats={localStats ?? {
@@ -173,7 +182,7 @@ export default function Home() {
 
       {view.screen === 'ai' && (
         <AIGame
-          config={view.config}
+          config={{ ...view.config, telegramId: tgUser?.telegramId || null }}
           onExit={() => {
             setLocalStats(loadLocalStats())
             setView({ screen: 'menu' })
@@ -184,7 +193,7 @@ export default function Home() {
 
       {view.screen === 'online' && (
         <OnlineGame
-          config={view.config}
+          config={{ ...view.config, telegramId: tgUser?.telegramId || null }}
           onExit={() => {
             setLocalStats(loadLocalStats())
             setView({ screen: 'menu' })

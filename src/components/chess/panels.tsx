@@ -1,7 +1,7 @@
 'use client'
 
 // بطاقة اللاعب + الساعة + شريط التقييم
-import { CapturedRow, Piece } from './pieces'
+import { CapturedRow, TelegramAvatar } from './pieces'
 import { formatClock } from '@/lib/game-utils'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,6 +17,7 @@ export function PlayerCard({
   isAI = false,
   connected = true,
   thinkBadge,
+  avatarTgId, // معرف تلجرام لعرض صورة الملف الشخصي (اختياري)
 }: {
   name: string
   color: 'w' | 'b'
@@ -28,6 +29,7 @@ export function PlayerCard({
   isAI?: boolean
   connected?: boolean
   thinkBadge?: string | null
+  avatarTgId?: string | null
 }) {
   const low = clockMs !== null && clockMs < 30000
 
@@ -41,8 +43,8 @@ export function PlayerCard({
       )}
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="relative h-9 w-9 shrink-0 rounded-lg bg-stone-800 border border-stone-700 flex items-center justify-center">
-          <Piece type="k" color={color} />
+        <div className="relative h-9 w-9 shrink-0 rounded-lg bg-stone-800 border border-stone-700 flex items-center justify-center overflow-hidden">
+          <TelegramAvatar telegramId={avatarTgId} color={color} pieceType="k" />
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">

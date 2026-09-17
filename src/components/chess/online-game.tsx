@@ -17,6 +17,7 @@ export interface OnlineGameConfig {
   timeControl: TimeControl
   flow: 'quick' | 'create' | 'join' | 'challenge'
   joinCode?: string
+  telegramId?: string | null // لعرض صورة الملف الشخصي من تلجرام
 }
 
 interface ServerGameState {
@@ -32,8 +33,8 @@ interface ServerGameState {
   checkSquare: string | null
   status: { over: boolean; result: 'white' | 'black' | 'draw' | null; reason: string | null }
   players: {
-    white: { name: string; connected: boolean } | null
-    black: { name: string; connected: boolean } | null
+    white: { name: string; connected: boolean; telegramId?: string | null } | null
+    black: { name: string; connected: boolean; telegramId?: string | null } | null
   }
   moveNumber: number
 }
@@ -84,21 +85,23 @@ export function OnlineGame({
       if (cancelled) return
       setError(null)
       // إعادة الانضمام بعد انقطاع
+      // إرسال معرف تلجرام مع كل طلب انضمام لعرض صورة الملف الشخصي للطرفين
+      const tgPayload = { telegramId: config.telegramId || undefined }
       if (rejoinRef.current) {
-        s.emit('room:join', { name: config.playerName, code: rejoinRef.current.code })
+        s.emit('room:join', { name: config.playerName, code: rejoinRef.current.code, ...tgPayload })
         return
       }
       if (config.flow === 'quick') {
         setPhase('searching')
-        s.emit('lobby:quick', { name: config.playerName, timeControl: config.timeControl })
+        s.emit('lobby:quick', { name: config.playerName, timeControl: config.timeControl, ...tgPayload })
       } else if (config.flow === 'create') {
-        s.emit('room:create', { name: config.playerName, timeControl: config.timeControl })
+        s.emit('room:create', { name: config.playerName, timeControl: config.timeControl, ...tgPayload })
       } else if (config.flow === 'join') {
-        s.emit('room:join', { name: config.playerName, code: config.joinCode })
+        s.emit('room:join', { name: config.playerName, code: config.joinCode, ...tgPayload })
       } else if (config.flow === 'challenge') {
         // رابط تحدي من بوت تلجرام: نطلب الغرفة بكود التحدي تحديداً
         // الخادم ينشئها بذلك الكود، أو ينضم لمن سبقه تلقائياً (مضاعف الوصول آمن)
-        s.emit('room:create', { name: config.playerName, timeControl: config.timeControl, preferredCode: config.joinCode })
+        s.emit('room:create', { name: config.playerName, timeControl: config.timeControl, preferredCode: config.joinCode, ...tgPayload })
       }
     })
 
@@ -387,6 +390,7 @@ export function OnlineGame({
       clockMs: gameState && gameState.timeControl !== 'none' ? clientClock?.[c] ?? gameState.clocks[c] : null,
       clockActive: view.turn === c && !gameState?.status.over && !!gameState?.players.white && !!gameState?.players.black,
       connected: player?.connected ?? true,
+      avatarTgId: player?.telegramId || null,
     }
   }
 
@@ -493,6 +497,10 @@ export function OnlineGame({
         onSend: (t) => socketRef.current?.emit('chat:message', { code: roomCode, text: t }),
         myName: me?.name || config.playerName,
         myColor,
+        playerTgIds: {
+          white: gameState?.players.white?.telegramId || null,
+          black: gameState?.players.black?.telegramId || null,
+        },
       }}
       actions={actions}
       footerNote={

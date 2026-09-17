@@ -24,6 +24,12 @@ function normalizePreferredCode(preferredCode) {
   return clean.length === 5 ? clean : null
 }
 
+// تطبيع معرف تلجرام (لصورة الملف الشخصي في اللعبة): أرقام فقط، حد أقصى 20 رقم
+function cleanTgId(raw) {
+  const digits = String(raw || '').replace(/\D/g, '').slice(0, 20)
+  return digits.length >= 4 ? digits : null
+}
+
 function nowMs() {
   return Date.now()
 }
@@ -67,8 +73,8 @@ function publicState(room, serverNow = nowMs()) {
       reason: room.over ? room.over.reason : null,
     },
     players: {
-      white: room.players.white ? { name: room.players.white.name, connected: room.players.white.connected } : null,
-      black: room.players.black ? { name: room.players.black.name, connected: room.players.black.connected } : null,
+      white: room.players.white ? { name: room.players.white.name, connected: room.players.white.connected, telegramId: room.players.white.telegramId || null } : null,
+      black: room.players.black ? { name: room.players.black.name, connected: room.players.black.connected, telegramId: room.players.black.telegramId || null } : null,
     },
     moveNumber: Math.floor(chess.history().length / 2) + 1,
   }
@@ -191,8 +197,9 @@ export function createGameCore(io) {
   io.on('connection', (socket) => {
     console.log(`[game-core] connected: ${socket.id}`)
 
-    socket.on('lobby:quick', ({ name, timeControl }) => {
+    socket.on('lobby:quick', ({ name, timeControl, telegramId }) => {
       const cleanName = String(name || 'لاعب').trim().slice(0, 20) || 'لاعب'
+      const myTg = cleanTgId(telegramId)
       const tc = TIME_CONTROL_MS[timeControl] ? timeControl : 'none'
       leaveCurrentRoom(socket)
       const q = queues.get(tc) || []
@@ -207,8 +214,8 @@ export function createGameCore(io) {
         }
         const room = createRoom(rooms, io, { timeControl: tc })
         const whiteFirst = Math.random() < 0.5
-        room.players.white = { socketId: whiteFirst ? opponent.socketId : socket.id, name: whiteFirst ? opponent.name : cleanName, connected: true }
-        room.players.black = { socketId: whiteFirst ? socket.id : opponent.socketId, name: whiteFirst ? cleanName : opponent.name, connected: true }
+        room.players.white = { socketId: whiteFirst ? opponent.socketId : socket.id, name: whiteFirst ? opponent.name : cleanName, telegramId: whiteFirst ? opponent.tg : myTg, connected: true }
+        room.players.black = { socketId: whiteFirst ? socket.id : opponent.socketId, name: whiteFirst ? cleanName : opponent.name, telegramId: whiteFirst ? myTg : opponent.tg, connected: true }
         room.startedAt = nowMs()
         socketRoom.set(opponent.socketId, room.code)
         socketRoom.set(socket.id, room.code)
@@ -226,18 +233,18 @@ export function createGameCore(io) {
         oppSocket.emit('lobby:matched', {
           code: room.code,
           color: myColor(opponent.socketId),
-          opponent: { name: cleanName },
+          opponent: { name: cleanName, telegramId: myTg },
           timeControl: tc,
         })
         socket.emit('lobby:matched', {
           code: room.code,
           color: myColor(socket.id),
-          opponent: { name: opponent.name },
+          opponent: { name: opponent.name, telegramId: opponent.tg || null },
           timeControl: tc,
         })
         broadcastState(io, room)
       } else {
-        q.push({ socketId: socket.id, name: cleanName })
+        q.push({ socketId: socket.id, name: cleanName, tg: myTg })
         queues.set(tc, q)
         socket.emit('lobby:searching', { timeControl: tc })
       }
@@ -253,8 +260,9 @@ export function createGameCore(io) {
       }
     })
 
-    socket.on('room:create', ({ name, timeControl, preferredCode }) => {
+    socket.on('room:create', ({ name, timeControl, preferredCode, telegramId }) => {
       const cleanName = String(name || 'لاعب').trim().slice(0, 20) || 'لاعب'
+      const myTg = cleanTgId(telegramId)
       leaveCurrentRoom(socket)
       const wanted = normalizePreferredCode(preferredCode)
       // سيناريو التحدي (روابط البوت): إن سبق أن فتح المضيف الغرفة بكود التحدي،
@@ -262,25 +270,26 @@ export function createGameCore(io) {
       if (wanted) {
         const existing = rooms.get(wanted)
         if (existing && !existing.over && existing.players.white && !existing.players.black) {
-          joinRoomSeat(socket, existing, 'black', cleanName)
+          joinRoomSeat(socket, existing, 'black', cleanName, myTg)
           return
         }
       }
       const room = createRoom(rooms, io, { timeControl, preferredCode: wanted })
-      room.players.white = { socketId: socket.id, name: cleanName, connected: true }
+      room.players.white = { socketId: socket.id, name: cleanName, telegramId: myTg, connected: true }
       socketRoom.set(socket.id, room.code)
       socket.join(room.code)
       socket.emit('room:created', { code: room.code, color: 'white', timeControl: room.timeControl, youAre: 'white' })
     })
 
     // الانضمام لمقعد محدد (يستخدمه room:join وسيناريو التحدي في room:create)
-    function joinRoomSeat(socket, room, seat, cleanName) {
+    function joinRoomSeat(socket, room, seat, cleanName, cleanTg) {
       // إعادة اتصال: نفس الاسم ونفس المقعد
       for (const s of ['white', 'black']) {
         const p = room.players[s]
         if (p && p.name === cleanName && !p.connected) {
           p.socketId = socket.id
           p.connected = true
+          if (cleanTg) p.telegramId = cleanTg
           socketRoom.set(socket.id, room.code)
           socket.join(room.code)
           socket.emit('room:joined', { code: room.code, color: s, youAre: s, reconnected: true, opponent: room.players[s === 'white' ? 'black' : 'white']?.name || null })
@@ -294,7 +303,7 @@ export function createGameCore(io) {
         return
       }
       leaveCurrentRoom(socket)
-      room.players[seat] = { socketId: socket.id, name: cleanName, connected: true }
+      room.players[seat] = { socketId: socket.id, name: cleanName, telegramId: cleanTg || null, connected: true }
       if (!room.startedAt) room.startedAt = nowMs()
       room.lastMoveAt = nowMs()
       socketRoom.set(socket.id, room.code)
@@ -311,7 +320,7 @@ export function createGameCore(io) {
       })
     }
 
-    socket.on('room:join', ({ name, code }) => {
+    socket.on('room:join', ({ name, code, telegramId }) => {
       const cleanName = String(name || 'لاعب').trim().slice(0, 20) || 'لاعب'
       const cleanCode = String(code || '').trim().toUpperCase()
       const room = rooms.get(cleanCode)
@@ -319,7 +328,7 @@ export function createGameCore(io) {
         socket.emit('room:error', { message: 'الغرفة غير موجودة، تأكد من الكود' })
         return
       }
-      joinRoomSeat(socket, room, 'black', cleanName)
+      joinRoomSeat(socket, room, 'black', cleanName, cleanTgId(telegramId))
     })
 
     socket.on('game:move', ({ code, from, to, promotion }) => {

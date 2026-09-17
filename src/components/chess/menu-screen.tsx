@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, Bot, Zap, DoorOpen, KeyRound, Users, Volume2, VolumeX, BarChart3, Crown, Send, LogOut } from 'lucide-react'
+import { Trophy, Bot, Zap, DoorOpen, KeyRound, Users, Volume2, VolumeX, BarChart3, Crown, LogOut } from 'lucide-react'
 import type { AIGameConfig } from './ai-game'
 import type { OnlineGameConfig } from './online-game'
 import type { Difficulty, TimeControl } from '@/lib/game-types'
@@ -14,7 +14,8 @@ import { TIME_CONTROL_LABEL } from '@/lib/game-types'
 import type { LocalStats } from '@/lib/local-stats'
 import type { TelegramSession } from '@/lib/telegram-session'
 import { cn } from '@/lib/utils'
-import { Piece } from './pieces'
+import { Piece, TelegramAvatar } from './pieces'
+import { Slider } from '@/components/ui/slider'
 
 interface GlobalStats {
   totals: { games: number; aiWins: number; aiLosses: number; onlineWins: number; draws: number }
@@ -26,6 +27,8 @@ export function MenuScreen({
   onPlayerNameChange,
   soundOn,
   onToggleSound,
+  volume = 0.6,
+  onVolumeChange,
   tgUser,
   onTelegramLogout,
   localStats,
@@ -38,6 +41,8 @@ export function MenuScreen({
   onPlayerNameChange: (n: string) => void
   soundOn: boolean
   onToggleSound: () => void
+  volume?: number
+  onVolumeChange?: (v: number) => void
   tgUser?: TelegramSession | null
   onTelegramLogout?: () => void
   localStats: LocalStats
@@ -104,6 +109,23 @@ export function MenuScreen({
               {soundOn ? <Volume2 size={15} className="ml-1.5" /> : <VolumeX size={15} className="ml-1.5" />}
               {soundOn ? 'الصوت مفعّل' : 'الصوت مكتوم'}
             </Button>
+            {onVolumeChange && (
+              <div
+                className="flex items-center gap-2 rounded-md border border-stone-700 bg-stone-900/70 px-3 h-8"
+                dir="ltr"
+                title="مستوى الصوت"
+              >
+                <Volume2 size={13} className="shrink-0 text-amber-400/80" />
+                <Slider
+                  value={[Math.round(volume * 100)]}
+                  max={100}
+                  step={5}
+                  onValueChange={(vals) => onVolumeChange((vals[0] ?? 60) / 100)}
+                  className="w-24"
+                />
+                <span className="w-8 text-center text-[11px] font-semibold text-stone-400 tabular-nums">{Math.round(volume * 100)}%</span>
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -152,8 +174,8 @@ export function MenuScreen({
           </div>
           {tgUser && (
             <div className="flex items-center gap-2 rounded-full border border-sky-600/40 bg-sky-950/50 py-1 pl-1.5 pr-3">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-white">
-                <Send size={11} />
+              <span className="relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-700 border border-sky-500/50">
+                <TelegramAvatar telegramId={tgUser.telegramId} color="w" pieceType="k" />
               </span>
               <span className="text-xs font-semibold text-sky-300">متصل عبر تلجرام: {tgUser.name}</span>
               {onTelegramLogout && (
