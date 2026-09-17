@@ -1,13 +1,17 @@
 'use client'
 
 // شطرنج الملوك - الصفحة الرئيسية: إدارة المشاهد (القائمة / المباراة)
-import { useCallback, useEffect, useState } from 'react'
+// + معالجة روابط بوت تلجرام: تسجيل دخول تلقائي (?auth=TOKEN) وربط التحديات (?challenge=CODE)
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MenuScreen } from '@/components/chess/menu-screen'
 import { AIGame, type AIGameConfig } from '@/components/chess/ai-game'
 import { OnlineGame, type OnlineGameConfig } from '@/components/chess/online-game'
 import { StatsDialog } from '@/components/chess/stats-dialog'
 import { loadLocalStats, getPlayerName, setPlayerName, type LocalStats } from '@/lib/local-stats'
 import { isSoundEnabled, setSoundEnabled } from '@/lib/sound'
+import { getTelegramSession, exchangeLoginToken, clearTelegramSession, type TelegramSession } from '@/lib/telegram-session'
+import type { TimeControl } from '@/lib/game-types'
+import { useToast } from '@/hooks/use-toast'
 
 type View = { screen: 'menu' } | { screen: 'ai'; config: AIGameConfig } | { screen: 'online'; config: OnlineGameConfig }
 
@@ -18,6 +22,9 @@ export default function Home() {
   const [soundOn, setSoundOn] = useState(true)
   const [statsOpen, setStatsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [tgUser, setTgUser] = useState<TelegramSession | null>(null)
+  const deepLinkHandled = useRef(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -25,14 +32,78 @@ export default function Home() {
       setPlayerNameState(getPlayerName())
       setLocalStats(loadLocalStats())
       setSoundOn(isSoundEnabled())
+      setTgUser(getTelegramSession())
     }, 0)
     return () => clearTimeout(t)
   }, [])
+
+  // روابط بوت تلجرام: ?auth=TOKEN (دخول تلقائي) و ?challenge=CODE (الانضمام لتحدي)
+  useEffect(() => {
+    if (!mounted || deepLinkHandled.current) return
+    deepLinkHandled.current = true
+
+    const params = new URLSearchParams(window.location.search)
+    const auth = params.get('auth')
+    const challenge = (params.get('challenge') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5)
+    if (!auth && !challenge) return
+
+    // تنظيف الرابط من المعاملات فوراً (حتى لا يتشارك الزائر الرمز بالمصادفة)
+    window.history.replaceState({}, '', window.location.pathname)
+
+    const run = async () => {
+      // 1) تسجيل الدخول التلقائي إن وُجد رمز
+      if (auth) {
+        const session = await exchangeLoginToken(auth)
+        if (session) {
+          setTgUser(session)
+          setPlayerNameState(session.name)
+          setPlayerName(session.name)
+          toast({ title: `مرحباً ${session.name} 👋`, description: 'تم تسجيل دخولك تلقائياً عبر تلجرام', duration: 4000 })
+        } else {
+          toast({ title: 'انتهت صلاحية رابط الدخول', description: 'افتح البوت وأرسل /login للحصول على رابط جديد', variant: 'destructive', duration: 6000 })
+        }
+      }
+
+      // 2) الانضمام لتحدي من البوت
+      if (challenge && challenge.length === 5) {
+        let tc: TimeControl = 'none'
+        let fromName = 'صديقك'
+        try {
+          const res = await fetch(`/api/telegram/challenge?code=${challenge}`)
+          const data = await res.json()
+          if (data?.ok && data.challenge) {
+            tc = (['none', 'blitz3', 'blitz5', 'rapid10'].includes(data.challenge.timeControl) ? data.challenge.timeControl : 'none') as TimeControl
+            fromName = String(data.challenge.fromName || 'صديقك')
+            if (data.challenge.status === 'expired') {
+              toast({ title: 'انتهت صلاحية التحدي ⌛', description: 'اطلب من صديقك إنشاء تحدي جديد من البوت', variant: 'destructive', duration: 6000 })
+              return
+            }
+          }
+        } catch {
+          // لا مشكلة — سنحاول الانضمام مباشرة
+        }
+        // الاسم: جلسة تلجرام ثم الاسم المحفوظ ثم اسم زائر
+        const name = getTelegramSession()?.name || getPlayerName() || `زائر ${Math.floor(1000 + Math.random() * 9000)}`
+        setPlayerNameState(name)
+        setPlayerName(name)
+        toast({ title: `⚔️ تحدي من ${fromName}`, description: 'جارٍ الدخول للمباراة…', duration: 4000 })
+        setView({ screen: 'online', config: { playerName: name, timeControl: tc, flow: 'challenge', joinCode: challenge } })
+      }
+    }
+
+    void run()
+  }, [mounted, toast])
 
   const updatePlayerName = useCallback((n: string) => {
     setPlayerNameState(n)
     setPlayerName(n)
   }, [])
+
+  const logoutTelegram = useCallback(() => {
+    clearTelegramSession()
+    setTgUser(null)
+    toast({ title: 'تم تسجيل الخروج من تلجرام' })
+  }, [toast])
 
   const toggleSound = useCallback(() => {
     setSoundOn((prev) => {
@@ -50,6 +121,8 @@ export default function Home() {
           onPlayerNameChange={updatePlayerName}
           soundOn={soundOn}
           onToggleSound={toggleSound}
+          tgUser={tgUser}
+          onTelegramLogout={logoutTelegram}
           localStats={localStats ?? {
             wins: 0, losses: 0, draws: 0, aiWins: 0, onlineWins: 0,
             currentStreak: 0, bestStreak: 0, gamesPlayed: 0, history: [],

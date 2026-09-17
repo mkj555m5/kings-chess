@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Trophy, Bot, Zap, DoorOpen, KeyRound, Users, Volume2, VolumeX, BarChart3, Crown } from 'lucide-react'
+import { Trophy, Bot, Zap, DoorOpen, KeyRound, Users, Volume2, VolumeX, BarChart3, Crown, Send, LogOut } from 'lucide-react'
 import type { AIGameConfig } from './ai-game'
 import type { OnlineGameConfig } from './online-game'
 import type { Difficulty, TimeControl } from '@/lib/game-types'
 import { TIME_CONTROL_LABEL } from '@/lib/game-types'
 import type { LocalStats } from '@/lib/local-stats'
+import type { TelegramSession } from '@/lib/telegram-session'
 import { cn } from '@/lib/utils'
 import { Piece } from './pieces'
 
@@ -25,6 +26,8 @@ export function MenuScreen({
   onPlayerNameChange,
   soundOn,
   onToggleSound,
+  tgUser,
+  onTelegramLogout,
   localStats,
   onStartAI,
   onStartOnline,
@@ -35,6 +38,8 @@ export function MenuScreen({
   onPlayerNameChange: (n: string) => void
   soundOn: boolean
   onToggleSound: () => void
+  tgUser?: TelegramSession | null
+  onTelegramLogout?: () => void
   localStats: LocalStats
   onStartAI: (config: AIGameConfig) => void
   onStartOnline: (config: OnlineGameConfig) => void
@@ -128,21 +133,40 @@ export function MenuScreen({
             />
           </div>
         </div>
-        <div className="flex items-center gap-4 text-center">
-          <div>
-            <div className="text-2xl font-extrabold text-emerald-400">{localStats.wins}</div>
-            <div className="text-[11px] text-stone-500">فوز</div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-4 text-center">
+            <div>
+              <div className="text-2xl font-extrabold text-emerald-400">{localStats.wins}</div>
+              <div className="text-[11px] text-stone-500">فوز</div>
+            </div>
+            <div className="h-8 w-px bg-stone-800" />
+            <div>
+              <div className="text-2xl font-extrabold text-red-400">{localStats.losses}</div>
+              <div className="text-[11px] text-stone-500">خسارة</div>
+            </div>
+            <div className="h-8 w-px bg-stone-800" />
+            <div>
+              <div className="text-2xl font-extrabold text-amber-300">{winRate}%</div>
+              <div className="text-[11px] text-stone-500">نسبة الفوز</div>
+            </div>
           </div>
-          <div className="h-8 w-px bg-stone-800" />
-          <div>
-            <div className="text-2xl font-extrabold text-red-400">{localStats.losses}</div>
-            <div className="text-[11px] text-stone-500">خسارة</div>
-          </div>
-          <div className="h-8 w-px bg-stone-800" />
-          <div>
-            <div className="text-2xl font-extrabold text-amber-300">{winRate}%</div>
-            <div className="text-[11px] text-stone-500">نسبة الفوز</div>
-          </div>
+          {tgUser && (
+            <div className="flex items-center gap-2 rounded-full border border-sky-600/40 bg-sky-950/50 py-1 pl-1.5 pr-3">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-white">
+                <Send size={11} />
+              </span>
+              <span className="text-xs font-semibold text-sky-300">متصل عبر تلجرام: {tgUser.name}</span>
+              {onTelegramLogout && (
+                <button
+                  onClick={onTelegramLogout}
+                  title="تسجيل الخروج من تلجرام"
+                  className="text-sky-400/70 transition-colors hover:text-red-400"
+                >
+                  <LogOut size={12} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

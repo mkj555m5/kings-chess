@@ -15,7 +15,7 @@ import { recordGame, type LocalStats } from '@/lib/local-stats'
 export interface OnlineGameConfig {
   playerName: string
   timeControl: TimeControl
-  flow: 'quick' | 'create' | 'join'
+  flow: 'quick' | 'create' | 'join' | 'challenge'
   joinCode?: string
 }
 
@@ -95,6 +95,10 @@ export function OnlineGame({
         s.emit('room:create', { name: config.playerName, timeControl: config.timeControl })
       } else if (config.flow === 'join') {
         s.emit('room:join', { name: config.playerName, code: config.joinCode })
+      } else if (config.flow === 'challenge') {
+        // رابط تحدي من بوت تلجرام: نطلب الغرفة بكود التحدي تحديداً
+        // الخادم ينشئها بذلك الكود، أو ينضم لمن سبقه تلقائياً (مضاعف الوصول آمن)
+        s.emit('room:create', { name: config.playerName, timeControl: config.timeControl, preferredCode: config.joinCode })
       }
     })
 
@@ -127,6 +131,7 @@ export function OnlineGame({
       setRoomCode(data.code)
       setMyColor('white')
       setPhase('waiting')
+      if (config.flow === 'challenge') pushSystem('غرفة التحدي جاهزة — انتظار انضمام خصمك…')
     })
 
     s.on('room:joined', (data: { code: string; color: 'white' | 'black'; reconnected?: boolean; opponent?: string | null }) => {
@@ -487,6 +492,7 @@ export function OnlineGame({
         messages: chat,
         onSend: (t) => socketRef.current?.emit('chat:message', { code: roomCode, text: t }),
         myName: me?.name || config.playerName,
+        myColor,
       }}
       actions={actions}
       footerNote={

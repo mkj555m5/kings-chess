@@ -23,3 +23,44 @@ model GameRecord {
   @@index([mode, result])
   @@index([playerName])
 }
+
+// مستخدمو بوت تلجرام - حسابهم في اللعبة
+model TelegramUser {
+  id          String   @id @default(cuid())
+  telegramId  String   @unique // معرف تلجرام الرقمي
+  username    String? // @username إن وُجد
+  firstName   String? // الاسم الأول من تلجرام
+  displayName String // الاسم المستخدم داخل اللعبة
+  isOwner     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@index([username])
+}
+
+// رموز دخول أحادية الاستخدام - الروابط السحرية من البوت
+model LoginToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  telegramId String
+  used       Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([telegramId])
+}
+
+// تحديات أُنشئت من بوت تلجرام - كود التحدي هو كود الغرفة
+model Challenge {
+  id          String   @id @default(cuid())
+  code        String   @unique // 5 أحرف - نفس كود الغرفة
+  fromTgId    String
+  fromName    String
+  toTgId      String? // المستخدم المتحدّى (إن أُرسل عبر /challenge @user)
+  timeControl String // none | blitz3 | blitz5 | rapid10
+  status      String   @default("pending") // pending | accepted | started | done | expired
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([status])
+}

@@ -1,9 +1,14 @@
 // نواة خادم اللعب الأونلاين - مشتركة بين بيئة التطوير (mini-service) و Railway (server.mjs)
 // خادم موثوق: يتحقق من كل نقلة عبر chess.js قبل قبولها
 import { Chess } from 'chess.js'
+import { EventEmitter } from 'node:events'
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const TIME_CONTROL_MS = { blitz3: 180000, blitz5: 300000, rapid10: 600000 }
+
+// ناقل أحداث مشترك: البوت (تلجرام) يسمع منه ليعرف متى تمتلئ غرف التحدي وتنتهي مبارياتها
+export const coreBus = new EventEmitter()
+coreBus.setMaxListeners(50)
 
 function generateRoomCode(rooms) {
   let code = ''
@@ -11,6 +16,12 @@ function generateRoomCode(rooms) {
     code = Array.from({ length: 5 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('')
   } while (rooms.has(code))
   return code
+}
+
+// تطبيع كود مفضل (من روابط التحدي): أحرف كبيرة من الأبجدية المسموحة فقط
+function normalizePreferredCode(preferredCode) {
+  const clean = String(preferredCode || '').toUpperCase().split('').filter((c) => CODE_ALPHABET.includes(c)).join('')
+  return clean.length === 5 ? clean : null
 }
 
 function nowMs() {
@@ -63,8 +74,10 @@ function publicState(room, serverNow = nowMs()) {
   }
 }
 
-function createRoom(rooms, io, { timeControl }) {
-  const code = generateRoomCode(rooms)
+function createRoom(rooms, io, { timeControl, preferredCode }) {
+  // كود التحدي من بوت تلجرام: استخدمه إن كان متاحاً، وإلا ولّد كوداً عشوائياً
+  const wanted = normalizePreferredCode(preferredCode)
+  const code = wanted && !rooms.has(wanted) ? wanted : generateRoomCode(rooms)
   const room = {
     code,
     chess: new Chess(),
@@ -95,6 +108,13 @@ function finishGame(io, room, result, reason) {
   room.rematchOffers.clear()
   io.to(room.code).emit('game:over', { code: room.code, result, reason })
   broadcastState(io, room)
+  coreBus.emit('game:over', {
+    code: room.code,
+    result,
+    reason,
+    white: room.players.white?.name || null,
+    black: room.players.black?.name || null,
+  })
 }
 
 function checkRulesOver(io, room) {
@@ -194,6 +214,13 @@ export function createGameCore(io) {
         socketRoom.set(socket.id, room.code)
         oppSocket.join(room.code)
         socket.join(room.code)
+        coreBus.emit('room:filled', {
+          code: room.code,
+          timeControl: room.timeControl,
+          white: room.players.white?.name || null,
+          black: room.players.black?.name || null,
+          source: 'quick',
+        })
 
         const myColor = (s) => (room.players.white.socketId === s ? 'white' : 'black')
         oppSocket.emit('lobby:matched', {
@@ -226,15 +253,63 @@ export function createGameCore(io) {
       }
     })
 
-    socket.on('room:create', ({ name, timeControl }) => {
+    socket.on('room:create', ({ name, timeControl, preferredCode }) => {
       const cleanName = String(name || 'لاعب').trim().slice(0, 20) || 'لاعب'
       leaveCurrentRoom(socket)
-      const room = createRoom(rooms, io, { timeControl })
+      const wanted = normalizePreferredCode(preferredCode)
+      // سيناريو التحدي (روابط البوت): إن سبق أن فتح المضيف الغرفة بكود التحدي،
+      // فإن أول من يفتح الرابط بعده ينضم كأسود مباشرة بدلاً من إنشاء غرفة جديدة
+      if (wanted) {
+        const existing = rooms.get(wanted)
+        if (existing && !existing.over && existing.players.white && !existing.players.black) {
+          joinRoomSeat(socket, existing, 'black', cleanName)
+          return
+        }
+      }
+      const room = createRoom(rooms, io, { timeControl, preferredCode: wanted })
       room.players.white = { socketId: socket.id, name: cleanName, connected: true }
       socketRoom.set(socket.id, room.code)
       socket.join(room.code)
       socket.emit('room:created', { code: room.code, color: 'white', timeControl: room.timeControl, youAre: 'white' })
     })
+
+    // الانضمام لمقعد محدد (يستخدمه room:join وسيناريو التحدي في room:create)
+    function joinRoomSeat(socket, room, seat, cleanName) {
+      // إعادة اتصال: نفس الاسم ونفس المقعد
+      for (const s of ['white', 'black']) {
+        const p = room.players[s]
+        if (p && p.name === cleanName && !p.connected) {
+          p.socketId = socket.id
+          p.connected = true
+          socketRoom.set(socket.id, room.code)
+          socket.join(room.code)
+          socket.emit('room:joined', { code: room.code, color: s, youAre: s, reconnected: true, opponent: room.players[s === 'white' ? 'black' : 'white']?.name || null })
+          socket.to(room.code).emit('opponent:reconnected', { seat: s })
+          broadcastState(io, room)
+          return
+        }
+      }
+      if (room.players[seat]) {
+        socket.emit('room:error', { message: 'الغرفة ممتلئة' })
+        return
+      }
+      leaveCurrentRoom(socket)
+      room.players[seat] = { socketId: socket.id, name: cleanName, connected: true }
+      if (!room.startedAt) room.startedAt = nowMs()
+      room.lastMoveAt = nowMs()
+      socketRoom.set(socket.id, room.code)
+      socket.join(room.code)
+      socket.emit('room:joined', { code: room.code, color: seat, youAre: seat, opponent: room.players[seat === 'white' ? 'black' : 'white']?.name || null })
+      socket.to(room.code).emit('opponent:joined', { name: cleanName })
+      broadcastState(io, room)
+      coreBus.emit('room:filled', {
+        code: room.code,
+        timeControl: room.timeControl,
+        white: room.players.white?.name || null,
+        black: room.players.black?.name || null,
+        source: 'challenge',
+      })
+    }
 
     socket.on('room:join', ({ name, code }) => {
       const cleanName = String(name || 'لاعب').trim().slice(0, 20) || 'لاعب'
@@ -244,33 +319,7 @@ export function createGameCore(io) {
         socket.emit('room:error', { message: 'الغرفة غير موجودة، تأكد من الكود' })
         return
       }
-      // إعادة اتصال: نفس الاسم ونفس المقعد
-      for (const seat of ['white', 'black']) {
-        const p = room.players[seat]
-        if (p && p.name === cleanName && !p.connected) {
-          p.socketId = socket.id
-          p.connected = true
-          socketRoom.set(socket.id, room.code)
-          socket.join(room.code)
-          socket.emit('room:joined', { code: room.code, color: seat, youAre: seat, reconnected: true, opponent: room.players[seat === 'white' ? 'black' : 'white']?.name || null })
-          socket.to(room.code).emit('opponent:reconnected', { seat })
-          broadcastState(io, room)
-          return
-        }
-      }
-      if (room.players.black) {
-        socket.emit('room:error', { message: 'الغرفة ممتلئة' })
-        return
-      }
-      leaveCurrentRoom(socket)
-      room.players.black = { socketId: socket.id, name: cleanName, connected: true }
-      if (!room.startedAt) room.startedAt = nowMs()
-      room.lastMoveAt = nowMs()
-      socketRoom.set(socket.id, room.code)
-      socket.join(room.code)
-      socket.emit('room:joined', { code: room.code, color: 'black', youAre: 'black', opponent: room.players.white?.name || null })
-      socket.to(room.code).emit('opponent:joined', { name: cleanName })
-      broadcastState(io, room)
+      joinRoomSeat(socket, room, 'black', cleanName)
     })
 
     socket.on('game:move', ({ code, from, to, promotion }) => {

@@ -74,7 +74,7 @@ export function GameShell({
   aiThinking: boolean
   aiDifficultyLabel: string
   aiModelLabel: string
-  chat?: { messages: ChatMessage[]; onSend: (t: string) => void; myName: string }
+  chat?: { messages: ChatMessage[]; onSend: (t: string) => void; myName: string; myColor?: 'white' | 'black' }
   actions: ActionButtonDesc[]
   footerNote?: ReactNode
   children?: ReactNode
@@ -141,7 +141,7 @@ export function GameShell({
             {mode === 'ai' ? (
               <AIPanel messages={aiMessages} thinking={aiThinking} difficultyLabel={aiDifficultyLabel} modelLabel={aiModelLabel} />
             ) : mode === 'online' && chat ? (
-              <ChatPanel messages={chat.messages} onSend={chat.onSend} myName={chat.myName} className="flex-1" />
+              <ChatPanel messages={chat.messages} onSend={chat.onSend} myName={chat.myName} myColor={chat.myColor} className="flex-1" />
             ) : null}
           </div>
         )}
