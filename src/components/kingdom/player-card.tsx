@@ -61,7 +61,7 @@ export function PlayerCard({ card, size = 200, variant = 'normal', glow = false,
       }}
       onClick={onClick}
     >
-      <svg viewBox="0 0 300 430" width={w} height={h} className="block">
+      <svg viewBox="0 0 300 430" width={w} height={h} className="block" style={{ direction: 'ltr' }}>
         <defs>
           {/* جسم الكرت الذهبي — تدرج FC25 الرسمي */}
           <linearGradient id={`bg-${id}`} x1="0" y1="0" x2="0.65" y2="1">
@@ -220,7 +220,7 @@ export function MysteryCard({ size = 200, className = '', onClick, selected = fa
       style={{ width: w, height: h, filter: selected ? 'drop-shadow(0 0 16px rgba(168,85,247,.9))' : 'drop-shadow(0 5px 12px rgba(0,0,0,.55))' }}
       onClick={onClick}
     >
-      <svg viewBox="0 0 300 430" width={w} height={h} className="block">
+      <svg viewBox="0 0 300 430" width={w} height={h} className="block" style={{ direction: 'ltr' }}>
         <defs>
           <radialGradient id={`mbg-${uid}`} cx="50%" cy="32%" r="95%">
             <stop offset="0%" stopColor="#3b2a6b" />
