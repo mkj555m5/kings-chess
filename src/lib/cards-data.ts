@@ -1,7 +1,8 @@
 // ============ بيانات كروت اللاعبين — مملكة الألعاب ============
-// 97+ كرت من 80 حتى 99 — كلها تُعرض بقالب FC25 الذهبي الموحد مع صور وجه حقيقية
-// تشمل حراس المرمى (GK) بإحصائيات: DIV/HAN/KIC/REF/SPD/POS
-// كل كرت له وزن ظهور (نسبة) — كلما زاد التقييم قلّت نسبة ظهوره في المزاد
+// الوجوه الرسمية FC25 من cdn.futbin.com (نفس صور futbin.com/25/player)
+// شعارات الأندية الرسمية من نفس المصدر — مع احتياط للصور السابقة إن غاب الوجه
+
+import { CLUB_ID_BY_SLUG, FACE_BY_SLUG } from './cards-map'
 
 export interface PlayerCardData {
   id: string
@@ -17,35 +18,41 @@ export interface PlayerCardData {
   nation: string // علم الدولة emoji
   club: string
   league: string
-  photo?: string // صورة وجه لاعب (تُركب على قالب FC25 الذهبي)
+  photo?: string // صورة وجه لاعب (تُركب على قالب FC25)
+  clubId?: string // معرف شعار النادي في /cards/clubs/{id}.png
   gk?: boolean // حارس مرمى — تُعرض إحصائياته بتسميات الحراس
   alt?: string[] // مراكز بديلة (تظهر كبطاقات جانبية)
 }
 
+// مسار الوجه: الرسمي من futbin إن وُجد وإلا الصورة السابقة
+function faceFor(baseSlug: string, legacy?: string): string {
+  return FACE_BY_SLUG[baseSlug] || legacy || ''
+}
+
 // ===== الكروت الأصلية (النجوم — صور وجهم حقيقية) =====
 const ORIGINALS: PlayerCardData[] = [
-  { id: 'messi-1', name: 'Messi', rating: 99, pos: 'RW', pac: 94, sho: 97, pas: 99, dri: 99, def: 48, phy: 85, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: '/cards/photos/messi.jpg', alt: ['RM', 'CAM', 'ST'] },
-  { id: 'messi-2', name: 'Messi', rating: 93, pos: 'RW', pac: 97, sho: 95, pas: 99, dri: 99, def: 38, phy: 68, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: '/cards/photos/messi.jpg', alt: ['RM', 'CAM', 'ST'] },
-  { id: 'messi-3', name: 'Messi', rating: 97, pos: 'RW', pac: 95, sho: 98, pas: 99, dri: 99, def: 45, phy: 86, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: '/cards/photos/messi.jpg', alt: ['RM', 'CAM', 'ST'] },
-  { id: 'salah-1', name: 'Salah', rating: 99, pos: 'RW', pac: 99, sho: 97, pas: 95, dri: 99, def: 62, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
-  { id: 'salah-2', name: 'Salah', rating: 96, pos: 'RW', pac: 95, sho: 96, pas: 94, dri: 98, def: 58, phy: 88, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
-  { id: 'salah-3', name: 'Salah', rating: 97, pos: 'RW', pac: 96, sho: 97, pas: 95, dri: 99, def: 60, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
-  { id: 'salah-4', name: 'Salah', rating: 95, pos: 'RW', pac: 95, sho: 95, pas: 93, dri: 97, def: 56, phy: 86, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
-  { id: 'ronaldo-1', name: 'Cristiano Ronaldo', rating: 99, pos: 'ST', pac: 95, sho: 99, pas: 94, dri: 98, def: 48, phy: 94, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg', alt: ['LW', 'CAM'] },
-  { id: 'ronaldo-2', name: 'Cristiano Ronaldo', rating: 95, pos: 'ST', pac: 94, sho: 97, pas: 90, dri: 95, def: 45, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg', alt: ['LW'] },
-  { id: 'ronaldo-3', name: 'Cristiano Ronaldo', rating: 97, pos: 'ST', pac: 95, sho: 98, pas: 92, dri: 96, def: 46, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg', alt: ['LW', 'CAM'] },
-  { id: 'ronaldo-4', name: 'Cristiano Ronaldo', rating: 93, pos: 'ST', pac: 93, sho: 96, pas: 89, dri: 94, def: 44, phy: 93, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg' },
-  { id: 'haaland-1', name: 'Haaland', rating: 98, pos: 'ST', pac: 97, sho: 99, pas: 95, dri: 96, def: 60, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
-  { id: 'haaland-2', name: 'Haaland', rating: 96, pos: 'ST', pac: 97, sho: 98, pas: 92, dri: 95, def: 58, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
-  { id: 'haaland-3', name: 'Haaland', rating: 95, pos: 'ST', pac: 96, sho: 98, pas: 90, dri: 94, def: 56, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
-  { id: 'haaland-4', name: 'Haaland', rating: 94, pos: 'ST', pac: 95, sho: 97, pas: 90, dri: 94, def: 57, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
-  { id: 'mbappe-1', name: 'Mbappé', rating: 91, pos: 'ST', pac: 96, sho: 91, pas: 80, dri: 92, def: 29, phy: 76, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', photo: '/cards/photos/mbappe.jpg', alt: ['LW'] },
-  { id: 'mbappe-2', name: 'Mbappé', rating: 93, pos: 'ST', pac: 97, sho: 92, pas: 82, dri: 93, def: 31, phy: 78, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', photo: '/cards/photos/mbappe.jpg', alt: ['LW'] },
-  { id: 'yamal-1', name: 'Lamine Yamal', rating: 91, pos: 'RW', pac: 92, sho: 85, pas: 89, dri: 94, def: 38, phy: 66, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', photo: '/cards/photos/yamal.jpg', alt: ['RM'] },
-  { id: 'yamal-2', name: 'Lamine Yamal', rating: 93, pos: 'RW', pac: 93, sho: 87, pas: 91, dri: 96, def: 40, phy: 68, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', photo: '/cards/photos/yamal.jpg', alt: ['RM'] },
-  { id: 'maradona-1', name: 'Maradona', rating: 95, pos: 'CAM', pac: 94, sho: 95, pas: 93, dri: 98, def: 30, phy: 78, nation: '🇦🇷', club: 'Icon', league: 'ICON', photo: '/cards/photos/maradona.jpg', alt: ['LW', 'ST'] },
-  { id: 'marmoush-1', name: 'Marmoush', rating: 82, pos: 'LW', pac: 90, sho: 83, pas: 79, dri: 84, def: 38, phy: 74, nation: '🇪🇬', club: 'Man City', league: 'PL', photo: '/cards/photos/marmoush.jpg', alt: ['ST', 'LM'] },
-  { id: 'marmoush-2', name: 'Marmoush', rating: 85, pos: 'ST', pac: 91, sho: 86, pas: 81, dri: 86, def: 40, phy: 76, nation: '🇪🇬', club: 'Man City', league: 'PL', photo: '/cards/photos/marmoush.jpg', alt: ['LW'] },
+  { id: 'messi-1', name: 'Messi', rating: 99, pos: 'RW', pac: 94, sho: 97, pas: 99, dri: 99, def: 48, phy: 85, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: faceFor('messi', '/cards/photos/messi.jpg'), clubId: CLUB_ID_BY_SLUG.messi, alt: ['RM', 'CAM', 'ST'] },
+  { id: 'messi-2', name: 'Messi', rating: 93, pos: 'RW', pac: 97, sho: 95, pas: 99, dri: 99, def: 38, phy: 68, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: faceFor('messi', '/cards/photos/messi.jpg'), clubId: CLUB_ID_BY_SLUG.messi, alt: ['RM', 'CAM', 'ST'] },
+  { id: 'messi-3', name: 'Messi', rating: 97, pos: 'RW', pac: 95, sho: 98, pas: 99, dri: 99, def: 45, phy: 86, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: faceFor('messi', '/cards/photos/messi.jpg'), clubId: CLUB_ID_BY_SLUG.messi, alt: ['RM', 'CAM', 'ST'] },
+  { id: 'salah-1', name: 'Salah', rating: 99, pos: 'RW', pac: 99, sho: 97, pas: 95, dri: 99, def: 62, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: faceFor('salah', '/cards/photos/salah.jpg'), clubId: CLUB_ID_BY_SLUG.salah, alt: ['RM', 'ST'] },
+  { id: 'salah-2', name: 'Salah', rating: 96, pos: 'RW', pac: 95, sho: 96, pas: 94, dri: 98, def: 58, phy: 88, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: faceFor('salah', '/cards/photos/salah.jpg'), clubId: CLUB_ID_BY_SLUG.salah, alt: ['RM', 'ST'] },
+  { id: 'salah-3', name: 'Salah', rating: 97, pos: 'RW', pac: 96, sho: 97, pas: 95, dri: 99, def: 60, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: faceFor('salah', '/cards/photos/salah.jpg'), clubId: CLUB_ID_BY_SLUG.salah, alt: ['RM', 'ST'] },
+  { id: 'salah-4', name: 'Salah', rating: 95, pos: 'RW', pac: 95, sho: 95, pas: 93, dri: 97, def: 56, phy: 86, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: faceFor('salah', '/cards/photos/salah.jpg'), clubId: CLUB_ID_BY_SLUG.salah, alt: ['RM', 'ST'] },
+  { id: 'ronaldo-1', name: 'Cristiano Ronaldo', rating: 99, pos: 'ST', pac: 95, sho: 99, pas: 94, dri: 98, def: 48, phy: 94, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: faceFor('ronaldo', '/cards/photos/ronaldo.jpg'), clubId: CLUB_ID_BY_SLUG.ronaldo, alt: ['LW', 'CAM'] },
+  { id: 'ronaldo-2', name: 'Cristiano Ronaldo', rating: 95, pos: 'ST', pac: 94, sho: 97, pas: 90, dri: 95, def: 45, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: faceFor('ronaldo', '/cards/photos/ronaldo.jpg'), clubId: CLUB_ID_BY_SLUG.ronaldo, alt: ['LW'] },
+  { id: 'ronaldo-3', name: 'Cristiano Ronaldo', rating: 97, pos: 'ST', pac: 95, sho: 98, pas: 92, dri: 96, def: 46, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: faceFor('ronaldo', '/cards/photos/ronaldo.jpg'), clubId: CLUB_ID_BY_SLUG.ronaldo, alt: ['LW', 'CAM'] },
+  { id: 'ronaldo-4', name: 'Cristiano Ronaldo', rating: 93, pos: 'ST', pac: 93, sho: 96, pas: 89, dri: 94, def: 44, phy: 93, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: faceFor('ronaldo', '/cards/photos/ronaldo.jpg'), clubId: CLUB_ID_BY_SLUG.ronaldo },
+  { id: 'haaland-1', name: 'Haaland', rating: 98, pos: 'ST', pac: 97, sho: 99, pas: 95, dri: 96, def: 60, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: faceFor('haaland', '/cards/photos/haaland.jpg'), clubId: CLUB_ID_BY_SLUG.haaland },
+  { id: 'haaland-2', name: 'Haaland', rating: 96, pos: 'ST', pac: 97, sho: 98, pas: 92, dri: 95, def: 58, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: faceFor('haaland', '/cards/photos/haaland.jpg'), clubId: CLUB_ID_BY_SLUG.haaland },
+  { id: 'haaland-3', name: 'Haaland', rating: 95, pos: 'ST', pac: 96, sho: 98, pas: 90, dri: 94, def: 56, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: faceFor('haaland', '/cards/photos/haaland.jpg'), clubId: CLUB_ID_BY_SLUG.haaland },
+  { id: 'haaland-4', name: 'Haaland', rating: 94, pos: 'ST', pac: 95, sho: 97, pas: 90, dri: 94, def: 57, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: faceFor('haaland', '/cards/photos/haaland.jpg'), clubId: CLUB_ID_BY_SLUG.haaland },
+  { id: 'mbappe-1', name: 'Mbappé', rating: 91, pos: 'ST', pac: 96, sho: 91, pas: 80, dri: 92, def: 29, phy: 76, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', photo: faceFor('mbappe', '/cards/photos/mbappe.jpg'), clubId: CLUB_ID_BY_SLUG.mbappe, alt: ['LW'] },
+  { id: 'mbappe-2', name: 'Mbappé', rating: 93, pos: 'ST', pac: 97, sho: 92, pas: 82, dri: 93, def: 31, phy: 78, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', photo: faceFor('mbappe', '/cards/photos/mbappe.jpg'), clubId: CLUB_ID_BY_SLUG.mbappe, alt: ['LW'] },
+  { id: 'yamal-1', name: 'Lamine Yamal', rating: 91, pos: 'RW', pac: 92, sho: 85, pas: 89, dri: 94, def: 38, phy: 66, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', photo: faceFor('yamal', '/cards/photos/yamal.jpg'), clubId: CLUB_ID_BY_SLUG.yamal, alt: ['RM'] },
+  { id: 'yamal-2', name: 'Lamine Yamal', rating: 93, pos: 'RW', pac: 93, sho: 87, pas: 91, dri: 96, def: 40, phy: 68, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', photo: faceFor('yamal', '/cards/photos/yamal.jpg'), clubId: CLUB_ID_BY_SLUG.yamal, alt: ['RM'] },
+  { id: 'maradona-1', name: 'Maradona', rating: 95, pos: 'CAM', pac: 94, sho: 95, pas: 93, dri: 98, def: 30, phy: 78, nation: '🇦🇷', club: 'Icon', league: 'ICON', photo: faceFor('maradona', '/cards/photos/maradona.jpg'), clubId: CLUB_ID_BY_SLUG.maradona, alt: ['LW', 'ST'] },
+  { id: 'marmoush-1', name: 'Marmoush', rating: 82, pos: 'LW', pac: 90, sho: 83, pas: 79, dri: 84, def: 38, phy: 74, nation: '🇪🇬', club: 'Man City', league: 'PL', photo: faceFor('marmoush', '/cards/photos/marmoush.jpg'), clubId: CLUB_ID_BY_SLUG.marmoush, alt: ['ST', 'LM'] },
+  { id: 'marmoush-2', name: 'Marmoush', rating: 85, pos: 'ST', pac: 91, sho: 86, pas: 81, dri: 86, def: 40, phy: 76, nation: '🇪🇬', club: 'Man City', league: 'PL', photo: faceFor('marmoush', '/cards/photos/marmoush.jpg'), clubId: CLUB_ID_BY_SLUG.marmoush, alt: ['LW'] },
 ]
 
 // ===== إحصائيات مولّدة واقعية حسب المركز والتقييم =====
@@ -209,7 +216,8 @@ function buildAll(): PlayerCardData[] {
       nation: p.nation,
       club: p.club,
       league: p.league,
-      photo: `/cards/photos/${p.id}.jpg`,
+      photo: faceFor(p.id, `/cards/photos/${p.id}.jpg`),
+      clubId: CLUB_ID_BY_SLUG[p.id],
       gk: p.pos === 'GK' || undefined,
       alt: p.alt,
     }

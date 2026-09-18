@@ -1,9 +1,11 @@
 'use client'
 
 // ============ كرت اللاعب FC25 — مملكة الألعاب ============
-// قالب ذهبي موحد مطابق لكروت FC25 الحقيقية: درع ذهبي معدني،
-// تقييم ومركز أعلى اليسار، صورة اللاعب بدمج ناعم، الإحصائيات والعلم والنادي
-// حراس المرمى يعرضون: DIV HAN KIC REF SPD POS
+// مطابق لكروت futbin.com/25/player الحقيقية:
+// • الوجه الرسمي الشفاف (512×512 من cdn.futbin.com) بالمنتصف
+// • التقييم + المركز + علم الدولة + شعار النادي أعلى اليسار (النسق الأصلي)
+// • الإحصائيات عمودان × 3 صفوف: PAC/SHO/PAS يسار — DRI/DEF/PHY يمين
+// • الحراس: DIV/HAN/KIC/REF/SPD/POS
 // + وضع "مجهول" (كرت أسود غامض للعبة اللاعب المجهول)
 
 import { useId, useState } from 'react'
@@ -19,9 +21,9 @@ interface Props {
   selected?: boolean
 }
 
-// شكل درع FC25: قمة ناعمة، أكتاف مستديرة، قاع مدبب أنيق
-const SHIELD_PATH =
-  'M150 8 C 196 3, 244 11, 264 24 C 273 31, 277 43, 276 56 C 281 130, 277 232, 260 300 C 249 349, 214 392, 150 420 C 86 392, 51 349, 40 300 C 23 232, 19 130, 24 56 C 23 43, 27 31, 36 24 C 56 11, 104 3, 150 8 Z'
+// شكل كرت FC25: أعلى مستدير، جوانب مستقيمة، قاع مستدير الزوايا
+const CARD_PATH =
+  'M150 4 C 218 4, 266 9, 276 15 C 288 23, 293 40, 293 60 L 293 352 C 293 394, 256 424, 150 424 C 44 424, 7 394, 7 352 L 7 60 C 7 40, 12 23, 24 15 C 34 9, 82 4, 150 4 Z'
 
 // تسميات الإحصائيات — لاعبي المناصب / الحراس
 const STAT_LABELS = ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY']
@@ -40,8 +42,10 @@ export function PlayerCard({ card, size = 200, variant = 'normal', glow = false,
   const id = `${card.id}-${uid}`
   const showPhoto = !!card.photo && !imgFailed
   const labels = card.gk ? GK_STAT_LABELS : STAT_LABELS
-  const stats = [card.pac, card.sho, card.pas, card.dri, card.def, card.phy]
-  const stars = Math.max(1, Math.min(5, Math.round((card.rating - 74) / 5)))
+  // العمود الأيسر PAC/SHO/PAS (أو DIV/HAN/KIC) — الأيمن DRI/DEF/PHY (أو REF/SPD/POS)
+  const leftStats = [0, 1, 2].map((i) => ({ v: [card.pac, card.sho, card.pas, card.dri, card.def, card.phy][i], l: labels[i] }))
+  const rightStats = [3, 4, 5].map((i) => ({ v: [card.pac, card.sho, card.pas, card.dri, card.def, card.phy][i], l: labels[i] }))
+  const gold = card.rating >= 90 // نسخة أنعم وألمع للنجوم
 
   return (
     <div
@@ -59,181 +63,147 @@ export function PlayerCard({ card, size = 200, variant = 'normal', glow = false,
     >
       <svg viewBox="0 0 300 430" width={w} height={h} className="block">
         <defs>
-          {/* الجسم الذهبي المعدني */}
-          <radialGradient id={`bg-${id}`} cx="50%" cy="30%" r="95%">
-            <stop offset="0%" stopColor="#f9ecc0" />
-            <stop offset="28%" stopColor="#f0d98a" />
-            <stop offset="58%" stopColor="#dcb95c" />
-            <stop offset="82%" stopColor="#b98e2f" />
-            <stop offset="100%" stopColor="#8a651a" />
-          </radialGradient>
-          {/* لمعان قطري مثل المعدن المطرَّق */}
+          {/* جسم الكرت الذهبي — تدرج FC25 الرسمي */}
+          <linearGradient id={`bg-${id}`} x1="0" y1="0" x2="0.65" y2="1">
+            <stop offset="0%" stopColor={gold ? '#fdf3c4' : '#f7e9ae'} />
+            <stop offset="18%" stopColor={gold ? '#f3e194' : '#eed88f'} />
+            <stop offset="42%" stopColor={gold ? '#e3c26a' : '#dcbd61'} />
+            <stop offset="70%" stopColor={gold ? '#caa045' : '#c39a3d'} />
+            <stop offset="100%" stopColor={gold ? '#a37a28' : '#9c742a'} />
+          </linearGradient>
+          {/* لمعان قُطري — نسق المعدن الأصلي */}
           <linearGradient id={`sheen-${id}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.34" />
-            <stop offset="24%" stopColor="#ffffff" stopOpacity="0.06" />
-            <stop offset="46%" stopColor="#ffffff" stopOpacity="0.22" />
-            <stop offset="62%" stopColor="#ffffff" stopOpacity="0.03" />
-            <stop offset="82%" stopColor="#ffffff" stopOpacity="0.14" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
-          </linearGradient>
-          {/* إطار خارجي ذهبي داكن */}
-          <linearGradient id={`bd-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8a6a1f" />
-            <stop offset="30%" stopColor="#c9a227" />
-            <stop offset="70%" stopColor="#a37f22" />
-            <stop offset="100%" stopColor="#6b4f14" />
-          </linearGradient>
-          {/* تعتيم أسفل الاسم والإحصائيات */}
-          <linearGradient id={`fade-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5c3d08" stopOpacity="0" />
-            <stop offset="55%" stopColor="#4a3005" stopOpacity="0.38" />
-            <stop offset="100%" stopColor="#3a2503" stopOpacity="0.6" />
-          </linearGradient>
-          {/* قناع دمج الصورة البيضاوي الناعم */}
-          <radialGradient id={`pm-${id}`} cx="50%" cy="45%" r="60%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="62%" stopColor="#ffffff" />
-            <stop offset="82%" stopColor="#ffffff" stopOpacity="0.72" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.30" />
+            <stop offset="22%" stopColor="#ffffff" stopOpacity="0.05" />
+            <stop offset="45%" stopColor="#ffffff" stopOpacity="0.16" />
+            <stop offset="63%" stopColor="#ffffff" stopOpacity="0.02" />
+            <stop offset="84%" stopColor="#ffffff" stopOpacity="0.10" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-          </radialGradient>
+          </linearGradient>
+          {/* حواف الكرت */}
+          <linearGradient id={`bd-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#9d7823" />
+            <stop offset="35%" stopColor="#d8b45c" />
+            <stop offset="70%" stopColor="#ab8430" />
+            <stop offset="100%" stopColor="#7a5a16" />
+          </linearGradient>
+          {/* تلاشي أسفل الصورة فوق منطقة الاسم */}
+          <linearGradient id={`fade-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#caa045" stopOpacity="0" />
+            <stop offset="55%" stopColor="#c39a3d" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#a37a28" stopOpacity="0.85" />
+          </linearGradient>
           <clipPath id={`clip-${id}`}>
-            <path d={SHIELD_PATH} />
+            <path d={CARD_PATH} />
           </clipPath>
-          <mask id={`mask-${id}`}>
-            <ellipse cx="150" cy="136" rx="116" ry="112" fill={`url(#pm-${id})`} />
-          </mask>
         </defs>
 
-        {/* خلفية شفافة خارج الدرع */}
-        <rect width="300" height="430" fill="transparent" />
-
         <g clipPath={`url(#clip-${id})`}>
-          {/* الجسم الذهبي */}
           <rect width="300" height="430" fill={`url(#bg-${id})`} />
-          {/* لمعة قطرية */}
           <rect width="300" height="430" fill={`url(#sheen-${id})`} />
 
-          {/* صورة اللاعب بدمج ناعم */}
+          {/* الوجه الرسمي الشفاف — منتصف الكرت */}
           {showPhoto && (
             <image
               href={card.photo}
-              x="26"
-              y="18"
-              width="248"
-              height="230"
-              preserveAspectRatio="xMidYMin slice"
-              mask={`url(#mask-${id})`}
+              x="45"
+              y="8"
+              width="210"
+              height="210"
+              preserveAspectRatio="xMidYMin meet"
               onError={() => setImgFailed(true)}
             />
           )}
-          {/* بديل نصي إن فشلت الصورة: صورة ظلية */}
           {!showPhoto && (
-            <g opacity="0.5">
-              <circle cx="150" cy="118" r="52" fill="#8a651a" />
-              <path d="M60 250 C 60 175, 240 175, 240 250 L 240 260 L 60 260 Z" fill="#8a651a" />
+            <g opacity="0.55">
+              <circle cx="150" cy="96" r="50" fill="#8a651a" />
+              <path d="M62 218 C 62 150, 238 150, 238 218 L 238 228 L 62 228 Z" fill="#8a651a" />
             </g>
           )}
 
-          {/* تعتيم سفلي ناعم */}
-          <rect x="0" y="200" width="300" height="230" fill={`url(#fade-${id})`} />
+          {/* تلاشٍ خفيف أسفل الوجه */}
+          <rect x="0" y="180" width="300" height="140" fill={`url(#fade-${id})`} />
         </g>
 
-        {/* الإطار الخارجي + الخط الداخلي الفاتح */}
-        <path d={SHIELD_PATH} fill="none" stroke={`url(#bd-${id})`} strokeWidth="7" />
-        <path d={SHIELD_PATH} fill="none" stroke="#fff7d6" strokeWidth="1.4" opacity="0.65" transform="translate(0 0) scale(0.955) translate(6.8 9.7)" />
-        <path d={SHIELD_PATH} fill="none" stroke="#3f2c05" strokeWidth="1" opacity="0.5" transform="translate(0 0) scale(0.985) translate(2.2 3.2)" />
+        {/* الإطار */}
+        <path d={CARD_PATH} fill="none" stroke={`url(#bd-${id})`} strokeWidth="5" />
+        <path d={CARD_PATH} fill="none" stroke="#fff4c8" strokeWidth="1.1" opacity="0.5" transform="translate(0 0) scale(0.972) translate(4.2 6)" />
 
-        {/* التقييم والمركز أعلى اليسار */}
-        <text x="34" y="66" fill="#ffffff" fontSize="42" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif" style={{ paintOrder: 'stroke' }} stroke="#4a300508" strokeWidth="0">
+        {/* التقييم + المركز — أعلى اليسار (نسق futbin) */}
+        <text x="30" y="62" fill="#47310a" fontSize="42" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif">
           {card.rating}
         </text>
-        <text x="34" y="88" fill="#ffffff" fontSize="16.5" fontWeight="800" fontFamily="Arial, sans-serif" style={{ paintOrder: 'stroke' }}>
+        <text x="30" y="85" fill="#47310a" fontSize="17" fontWeight="800" fontFamily="Arial, sans-serif">
           {card.pos}
         </text>
-        {/* علامة + + (أفضل نسخة) */}
-        {card.alt && card.alt.length > 0 && (
-          <text x="34" y="106" fill="#fff8d9" fontSize="13" fontWeight="900" opacity="0.95">
-            + +
+
+        {/* علم الدولة */}
+        <text x="34" y="116" fontSize="21" textAnchor="middle">
+          {card.nation}
+        </text>
+
+        {/* شعار النادي الرسمي (من futbin) أو اسم النادي */}
+        {card.clubId ? (
+          <image href={`/cards/clubs/${card.clubId}.png`} x="18" y="126" width="34" height="34" preserveAspectRatio="xMidYMid meet" />
+        ) : (
+          <text x="35" y="151" textAnchor="middle" fill="#47310a" fontSize="11" fontWeight="900" fontFamily="Arial, sans-serif">
+            {card.club === 'Icon' ? '★' : ''}
           </text>
         )}
-
-        {/* المراكز البديلة — شرائح يسار الدرع */}
-        {card.alt?.map((p, i) => (
-          <g key={p} transform={`translate(8, ${124 + i * 28})`}>
-            <rect width="30" height="22" rx="5" fill="#3a2503" opacity="0.55" stroke="#f3e2a4" strokeWidth="0.8" />
-            <text x="15" y="15.5" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="800">
-              {p}
-            </text>
-          </g>
-        ))}
 
         {/* الاسم */}
         <text
           x="150"
-          y="277"
+          y="272"
           textAnchor="middle"
           fill="#ffffff"
-          fontSize={card.name.length > 14 ? 20 : card.name.length > 10 ? 23 : 26}
+          fontSize={card.name.length > 14 ? 19 : card.name.length > 10 ? 22 : 25}
           fontWeight="900"
           fontFamily="Arial, sans-serif"
           style={{ paintOrder: 'stroke', letterSpacing: '0.5px' }}
-          stroke="#3a2503"
-          strokeWidth="3.5"
+          stroke="#5c3d08"
+          strokeWidth="3"
         >
           {card.name}
         </text>
 
-        {/* خط فاصل رفيع */}
-        <line x1="62" y1="288" x2="238" y2="288" stroke="#fff7d6" strokeWidth="1" opacity="0.4" />
+        {/* الإحصائيات — عمودان × 3 صفوف مثل الكرت الأصلي */}
+        {[leftStats, rightStats].map((col, ci) =>
+          col.map((s, ri) => (
+            <g key={s.l + ci}>
+              <text
+                x={ci === 0 ? 118 : 202}
+                y={292 + ri * 34}
+                textAnchor="end"
+                fill="#ffffff"
+                fontSize="20"
+                fontWeight="900"
+                fontFamily="Arial, sans-serif"
+                style={{ paintOrder: 'stroke' }}
+                stroke="#5c3d08"
+                strokeWidth="2.4"
+              >
+                {s.v}
+              </text>
+              <text
+                x={ci === 0 ? 124 : 208}
+                y={292 + ri * 34}
+                textAnchor="start"
+                fill="#47310a"
+                fontSize="12.5"
+                fontWeight="800"
+                fontFamily="Arial, sans-serif"
+              >
+                {s.l}
+              </text>
+            </g>
+          )),
+        )}
 
-        {/* الإحصائيات الست */}
-        {stats.map((v, i) => (
-          <g key={labels[i]}>
-            <text x={52 + i * 39.2} y="309" textAnchor="middle" fill="#f7ecc8" fontSize="10.5" fontWeight="700" fontFamily="Arial, sans-serif">
-              {labels[i]}
-            </text>
-            <text
-              x={52 + i * 39.2}
-              y="327"
-              textAnchor="middle"
-              fill="#ffffff"
-              fontSize="16"
-              fontWeight="900"
-              fontFamily="Arial, sans-serif"
-              style={{ paintOrder: 'stroke' }}
-              stroke="#3a2503"
-              strokeWidth="2.2"
-            >
-              {v}
-            </text>
-          </g>
-        ))}
-
-        {/* العلم والنادي */}
-        <text x="118" y="356" textAnchor="middle" fontSize="19">
-          {card.nation}
+        {/* توقيع الملكية أسفل الكرت */}
+        <text x="150" y="408" textAnchor="middle" fill="#47310a" fontSize="11" fontWeight="800" opacity="0.85" fontFamily="Arial, sans-serif">
+          {card.club === 'Icon' ? '⭐ ICON ⭐' : ''}
         </text>
-        <text
-          x="133"
-          y="355"
-          fill="#ffffff"
-          fontSize="11.5"
-          fontWeight="700"
-          fontFamily="Arial, sans-serif"
-          style={{ paintOrder: 'stroke' }}
-          stroke="#3a2503"
-          strokeWidth="2"
-        >
-          {card.club}
-        </text>
-
-        {/* شريط النجوم السفلي */}
-        <g transform="translate(150, 384)">
-          <rect x="-50" y="-13" width="100" height="25" rx="12" fill="#3a2503" opacity="0.6" stroke="#f3e2a4" strokeWidth="0.9" />
-          <text textAnchor="middle" y="5.5" fill="#ffd75e" fontSize="13.5" fontWeight="900">
-            {'★'.repeat(stars)}
-          </text>
-        </g>
       </svg>
     </div>
   )
@@ -264,14 +234,14 @@ export function MysteryCard({ size = 200, className = '', onClick, selected = fa
             <stop offset="100%" stopColor="#2e1065" />
           </linearGradient>
           <clipPath id={`mclip-${uid}`}>
-            <path d={SHIELD_PATH} />
+            <path d={CARD_PATH} />
           </clipPath>
         </defs>
         <g clipPath={`url(#mclip-${uid})`}>
           <rect width="300" height="430" fill={`url(#mbg-${uid})`} />
           <ellipse cx="150" cy="180" rx="130" ry="120" fill="#6d28d9" opacity="0.14" />
         </g>
-        <path d={SHIELD_PATH} fill="none" stroke={`url(#mbd-${uid})`} strokeWidth="7" />
+        <path d={CARD_PATH} fill="none" stroke={`url(#mbd-${uid})`} strokeWidth="6" />
         <text x="150" y="235" textAnchor="middle" fill="#c4b5fd" fontSize="120" fontWeight="900" opacity="0.92">
           ؟
         </text>

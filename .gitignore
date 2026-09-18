@@ -74,3 +74,6 @@ cloudflare/realtime/.wrangler/
 tool-results
 dev.log
 server.log
+
+# ملف اللعبة المجمع — يُعاد توليده من الأجزاء عند البناء
+public/games/sonic-escape/index.pck

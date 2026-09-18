@@ -1,8 +1,9 @@
 'use client'
 
 // ============ ألعاب الأركيد 🕹️ ============
-// ثلاث ألعاب خارجية (Gamezop) بأزرار لكل لعبة — تعمل في مساحة خاصة
-// بشاشة كاملة مع زر رجوع: Final War Dead Zone / Blocks Adventure / Ludo With Friends
+// لعبة Sonic Escape — مستضافة محلياً (نسخة كاملة من itch.io بدون قيود التضمين)
+// المصدر: https://saucekye.itch.io/sonic-escape — ملفات Godot في public/games/sonic-escape
+// index.pck (192MB) غير مرفوع لـGitHub: يُجمَّع من index.pck.part-* في buildCommand
 
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -14,36 +15,22 @@ interface ArcadeGame {
   desc: string
   icon: string
   url: string
+  allow: string
   grad: string
 }
 
+const ITCH_ALLOW = 'autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated; web-share'
+
 const GAMES: ArcadeGame[] = [
   {
-    id: 'final-war',
-    title: 'Final War Dead Zone',
-    titleAr: 'الحرب النهائية',
-    desc: 'معركة بقائك في المنطقة الميتة — سلاح وذكاء',
-    icon: '🔫',
-    url: 'https://zv1y2i8p.play.gamezop.com/g/gTD1yQp3R',
-    grad: 'from-red-500/25 to-orange-500/10',
-  },
-  {
-    id: 'blocks-adventure',
-    title: 'Blocks Adventure',
-    titleAr: 'مغامرة المكعبات',
-    desc: 'رحلة غابة مليئة بالتحديات والمكعبات الملونة',
-    icon: '🧩',
-    url: 'https://zv1y2i8p.play.gamezop.com/g/UCS62KJ8c',
-    grad: 'from-lime-500/25 to-emerald-500/10',
-  },
-  {
-    id: 'ludo',
-    title: 'Ludo With Friends',
-    titleAr: 'لودو مع الأصدقاء',
-    desc: 'لعبة اللودو الكلاسيكية — العب مع أصدقائك',
-    icon: '🎲',
-    url: 'https://zv1y2i8p.play.gamezop.com/g/SkhljT2fdgb',
-    grad: 'from-sky-500/25 to-indigo-500/10',
+    id: 'sonic-escape',
+    title: 'Sonic Escape V0.9',
+    titleAr: 'سونيك إسكيب',
+    desc: 'اهرب واجري مع سونيك — لعبة أكشن وسرعة (نسخة مستضافة كاملة)',
+    icon: '🦔',
+    url: '/games/sonic-escape/index.html',
+    allow: ITCH_ALLOW,
+    grad: 'from-sky-500/25 to-blue-600/10',
   },
 ]
 
@@ -53,10 +40,10 @@ export function ArcadeSection({ onPlay }: { onPlay: (gameId?: string) => void })
     <div className="mt-2 space-y-3">
       <div className="flex items-center justify-between px-1">
         <div className="text-sm font-black text-zinc-300">🕹️ ألعاب الأركيد — مساحة خاصة</div>
-        <span className="text-[10px] text-zinc-500">3 ألعاب</span>
+        <span className="text-[10px] text-zinc-500">{GAMES.length} ألعاب</span>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        {GAMES.map((g, i) => (
+        {GAMES.map((g) => (
           <motion.button
             key={g.id}
             whileTap={{ scale: 0.97 }}
@@ -66,7 +53,7 @@ export function ArcadeSection({ onPlay }: { onPlay: (gameId?: string) => void })
             <div className="text-3xl">{g.icon}</div>
             <div className="mt-1.5 text-base font-black">{g.titleAr}</div>
             <div className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{g.desc}</div>
-            <div className="mt-2 inline-block rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-black text-white">▶ العب الآن</div>
+            <div className="mt-2 inline-block rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-black text-white">▶ Run Game</div>
           </motion.button>
         ))}
       </div>
@@ -74,7 +61,7 @@ export function ArcadeSection({ onPlay }: { onPlay: (gameId?: string) => void })
   )
 }
 
-// ===== مساحة اللعب الخاصة (شاشة كاملة iframe) =====
+// ===== مساحة اللعب الخاصة (شاشة كاملة iframe — نفس كود itch.io) =====
 export function ArcadePlayer({ onExit, initialGame }: { onExit: () => void; initialGame?: string | null }) {
   const [active, setActive] = useState<ArcadeGame | null>(() => GAMES.find((g) => g.id === initialGame) || null)
 
@@ -93,13 +80,17 @@ export function ArcadePlayer({ onExit, initialGame }: { onExit: () => void; init
             🏠 الرئيسة
           </button>
         </div>
+        {/* نفس كود التضمين الأصلي من زر Run game في صفحة اللعبة على itch.io */}
         <iframe
           key={active.id}
+          id="game_drop"
           src={active.url}
           title={active.title}
           className="h-full w-full flex-1 border-0 bg-black"
-          allow="gamepad *; fullscreen *; autoplay"
+          allow={active.allow}
           allowFullScreen
+          scrolling="no"
+          allowTransparency
           seamless
         />
       </div>
