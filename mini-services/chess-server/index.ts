@@ -3,6 +3,7 @@
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { createGameCore } from '../../multiplayer/game-core.mjs'
+import { createXoCore } from '../../multiplayer/xo-core.mjs'
 
 const PORT = 3003
 
@@ -21,6 +22,7 @@ const io = new Server(httpServer, {
 })
 
 createGameCore(io)
+createXoCore(io)
 
 httpServer.listen(PORT, () => {
   console.log(`♟️  Chess game server running on port ${PORT}`)

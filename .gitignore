@@ -69,3 +69,8 @@ dev-restart.log
 .open-next/
 .wrangler/
 cloudflare/realtime/.wrangler/
+
+# temp
+tool-results
+dev.log
+server.log

@@ -314,3 +314,28 @@ export async function connectGameSocket(): Promise<import('socket.io-client').So
   }
   return config.socketUrl ? io(config.socketUrl, options) : io(options)
 }
+
+// اتصال مشترك دائم (Singleton) — تستخدمه ألعاب المملكة (XO والمشاهدة)
+// يدعم التمرير callbacks (ack) مباشرة عبر socket.io
+let sharedSocket: import('socket.io-client').Socket | null = null
+
+export async function getSocket(): Promise<import('socket.io-client').Socket> {
+  if (sharedSocket && sharedSocket.connected) return sharedSocket
+  const config = await fetchSocketConfig()
+  const { io } = await import('socket.io-client')
+  const options = {
+    path: config.socketPath || '/socket.io',
+    transports: ['websocket', 'polling'] as ('websocket' | 'polling')[],
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+    timeout: 10000,
+  }
+  sharedSocket = config.socketUrl ? io(config.socketUrl, options) : io(options)
+  return sharedSocket
+}
+
+/** نسخة بسيطة: تعيد الاتصال المشترك إن وُجد، وإلا null (يُنشأ غير متزامن في مكان آخر) */
+export function peekSocket(): import('socket.io-client').Socket | null {
+  return sharedSocket
+}

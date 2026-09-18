@@ -130,10 +130,11 @@ export function createTelegramBot({ core, prisma }) {
   // ============ نصوص الأوامر (الأوامر ظاهرة بالكامل) ============
   function commandsText(user) {
     return [
-      `📜 <b>الأوامر الكاملة — شطرنج الملوك 👑</b>`,
+      `📜 <b>الأوامر الكاملة — مملكة الألعاب 🏰</b>`,
       ``,
       `🎮 <b>اللعب والدخول:</b>`,
       `/start — القائمة الرئيسية وتسجيل الدخول`,
+      `/games — 🏰 كل ألعاب المملكة (شطرنج · XO · المزاد · المجهول)`,
       `/login — 🔑 رابط دخول فوري للموقع (تسجيل دخول تلقائي بحسابك)`,
       `/challenge — ⚔️ إنشاء تحدي وإرسال الرابط لخصمك`,
       `/challenge @user — تحدَّ مستخدمًا معيناً مباشرة`,
@@ -158,9 +159,8 @@ export function createTelegramBot({ core, prisma }) {
     const atCmd = (c) => (botUsername ? `<code>/${c}@${esc(botUsername)}</code>` : `<code>/${c}</code>`)
     await send(
       chatId,
-      `👑 <b>شطرنج الملوك وصل إلى المجموعة!</b>\n\n⚔️ اكتب <code>/challenge</code> لإنشاء تحدي شطرنج ومشاركة الرابط.\n⏱ مع الوقت: <code>/challenge 3</code> أو <code>/challenge 5</code> أو <code>/challenge 10</code>\n👤 لتحدّي عضو بالاسم: <code>/challenge @اسمه</code>\n\n💡 <b>مهم في المجموعات:</b> إذا لم يستجب البوت لأمر بسيط اكتبه بصيغة ${atCmd('challenge')} — تلجرام يوجّه الأمر للبوت مباشرة.
-🎮 وللدخول للعبة في أي وقت اضغط زر ☰ أسفل الشاشة.`,
-      kb([[btn('⚔️ كيف أتحدّى؟', 'go:challenge'), btn('🎮 افتح اللعبة', 'go:open')]]),
+      `🏰 <b>مملكة الألعاب وصلت إلى المجموعة!</b>\n\n🎮 <b>الألعاب المتاحة:</b>\n♟️ شطرنج الملوك — <code>/challenge</code> لإنشاء تحدي ومشاركة الرابط\n⭕ XO — إكس أو أونلاين\n⚽ سوبر المزاد — كلاسيك ٥٠م / برو ماكس ٢٠٠م\n🃏 اللاعب المجهول — بطاقات سوداء غامضة\n🧪 <code>/ping</code> — اختبار استجابة البوت\n\n💡 <b>إذا لم يستجب البوت في المجموعة:</b>\n١ـ اكتب الأمر بصيغة ${atCmd('challenge')}\n٢ـ الأضمن: اجعل البوت <b>مشرفاً</b> أو عطّل Privacy Mode من @BotFather (‎/setprivacy ← Disable)\n\n🎮 وللدخول للمملكة في أي وقت اضغط زر ☰ أسفل الشاشة.`,
+      kb([[btn('🎮 كل الألعاب', 'go:games'), btn('⚔️ تحدي شطرنج', 'go:challenge')]]),
     )
   }
 
@@ -210,18 +210,29 @@ export function createTelegramBot({ core, prisma }) {
 
     const user = await upsertUser(from).catch(() => null)
     if (!prisma) { await send(chatId, noDb()); return }
+    if (!user) { await send(chatId, '⚠️ تعذر الوصول لقاعدة البيانات حالياً — حاول بعد قليل.'); return }
 
     const parts = text.split(/\s+/)
     const cmd = parts[0].replace(/@[\w_]+$/, '').slice(1).toLowerCase()
     const args = parts.slice(1).join(' ')
 
+    // حماية: أي استثناء في أمر لا يجب أن يسقط العملية
+    try {
+      await dispatchCommand(chatId, user, msg, from, cmd, args)
+    } catch (err) {
+      console.warn('[tg-bot] command error:', cmd, err?.message)
+      await send(chatId, '⚠️ حدث خطأ أثناء تنفيذ الأمر — حاول مجدداً.').catch(() => {})
+    }
+  }
+
+  async function dispatchCommand(chatId, user, msg, from, cmd, args) {
     switch (cmd) {
       case 'start':
       case 'menu': {
         const link = await authedOpenLink(user.telegramId)
         await send(
           chatId,
-          `👑 <b>أهلاً ${esc(user.displayName)} في بوت شطرنج الملوك!</b>\n\nهذا البوت بوابتك للعبة: سجّل دخولك بضغطة واحدة، وأنشئ تحديات وأرسلها لأصدقائك، وتابع إحصائياتك.\n\n${commandsText(user)}`,
+          `🏰 <b>أهلاً ${esc(user.displayName)} في مملكة الألعاب!</b>\n\nلعبة واحدة، أربع تجارب: شطرنج الملوك ♟️، XO ⭕، سوبر المزاد ⚽، واللاعب المجهول 🃏 — وكلها تمنحك نقاطاً ترفعك في التصنيف.\n\n${commandsText(user)}`,
           mainKb(link),
         )
         return
@@ -291,6 +302,24 @@ export function createTelegramBot({ core, prisma }) {
         broadcastMode.delete(chatId)
         pendingBroadcast.delete(chatId)
         await send(chatId, '✅ تم الإلغاء.')
+        return
+      }
+      case 'games':
+      case 'ألعاب':
+      case 'kingdom': {
+        const link = await authedOpenLink(user.telegramId)
+        await send(
+          chatId,
+          `🏰 <b>مملكة الألعاب — ٤ ألعاب في مكان واحد!</b>\n\n♟️ <b>شطرنج الملوك</b> — ضد الوزير الذكي أو أصدقائك أونلاين\n⭕ <b>XO</b> — إكس أو سريع ضد الأصدقاء أو الذكاء الاصطناعي\n⚽ <b>سوبر المزاد</b> — راقب الكروت وزايد بالملايين: كلاسيك ٥٠ مليون · برو ماكس ٢٠٠ مليون\n🃏 <b>اللاعب المجهول</b> — بطاقة ظاهرة وبطاقة سوداء غامضة… قلبك مع مين؟\n\n🏆 اجمع النقاط وارتقِ في التصنيف من برونزي إلى ملكي!`,
+          kb(link ? [[urlBtn('🎮 افتح المملكة — دخول تلقائي', link)], [btn('🏆 المتصدرون', 'go:top')]] : [[btn('🏆 المتصدرون', 'go:top')]]),
+        )
+        return
+      }
+      case 'ping': {
+        const t0 = Date.now()
+        const m = await api('sendMessage', { chat_id: chatId, text: '🏓 …' })
+        const ms = m?.ok ? Date.now() - t0 : 0
+        await edit(chatId, m?.result?.message_id, `🏓 <b>Pong!</b> البوت يستجيب بشكل طبيعي ✅\n⚡ زمن الاستجابة: <b>${ms}ms</b>\n💬 هذه المجموعة مدعومة — جرّب <code>/games</code> للترفيه!`)
         return
       }
       default: {
@@ -630,6 +659,17 @@ export function createTelegramBot({ core, prisma }) {
         await cmdTop(chatId)
         return
       }
+      if (data === 'go:games') {
+        await api('answerCallbackQuery', { callback_query_id: cb.id })
+        const u = await upsertUser(from).catch(() => null)
+        const link = u ? await authedOpenLink(u.telegramId) : null
+        await send(
+          chatId,
+          `🏰 <b>مملكة الألعاب — ٤ ألعاب في مكان واحد!</b>\n\n♟️ <b>شطرنج الملوك</b> · ⭕ <b>XO</b>\n⚽ <b>سوبر المزاد</b> (كلاسيك/برو ماكس) · 🃏 <b>اللاعب المجهول</b>\n\n🏆 اجمع النقاط وارتقِ في التصنيف!`,
+          kb(link ? [[urlBtn('🎮 افتح المملكة الآن', link)], [btn('⚔️ تحدي شطرنج', 'go:challenge')]] : [[btn('⚔️ تحدي شطرنج', 'go:challenge')]]),
+        )
+        return
+      }
       await api('answerCallbackQuery', { callback_query_id: cb.id })
     } catch (err) {
       console.warn('[tg-bot] callback:', err?.message)
@@ -638,9 +678,29 @@ export function createTelegramBot({ core, prisma }) {
   }
 
   // ============ التحديثات ============
+  // ترحيب عند إضافة البوت إلى مجموعة (my_chat_member — يصل حتى مع Privacy Mode)
+  async function handleMyChatMember(mcm) {
+    try {
+      const chat = mcm?.chat
+      if (!chat || (chat.type !== 'group' && chat.type !== 'supergroup')) return
+      const oldStatus = mcm.old_chat_member?.status
+      const newStatus = mcm.new_chat_member?.status
+      const isMe = String(mcm.new_chat_member?.user?.id || '') === String(botId)
+      if (isMe && ['left', 'kicked'].includes(oldStatus) && ['member', 'administrator'].includes(newStatus)) {
+        await sendGroupWelcome(chat.id)
+      }
+    } catch (err) { console.warn('[tg-bot] my_chat_member:', err?.message) }
+  }
+
   async function handleUpdate(update) {
-    if (update.message) await handleMessage(update.message)
-    else if (update.callback_query) await handleCallback(update.callback_query)
+    // حماية كاملة: أي استثناء في تحديث واحد لا يجب أن يسقط العملية أو يوقف بقية التحديثات
+    try {
+      if (update.message) await handleMessage(update.message)
+      else if (update.callback_query) await handleCallback(update.callback_query)
+      else if (update.my_chat_member) await handleMyChatMember(update.my_chat_member)
+    } catch (err) {
+      console.warn('[tg-bot] ⚠️ استثناء في تحديث — تجاهل آمن:', err?.stack || err?.message || err)
+    }
   }
 
   function handleWebhook(req, res) {
@@ -709,12 +769,13 @@ export function createTelegramBot({ core, prisma }) {
     }
 
     const publicBase = process.env.SITE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '')
+    const ALLOWED_UPDATES = ['message', 'callback_query', 'my_chat_member']
     if (process.env.TELEGRAM_POLLING === '1') {
       console.log('[tg-bot] 🔄 وضع Polling المحلي مفعّل')
       void pollingLoop()
     } else if (publicBase) {
       const hookUrl = `${publicBase.replace(/\/+$/, '')}${webhookPath}`
-      const r = await api('setWebhook', { url: hookUrl, allowed_updates: ['message', 'callback_query'], drop_pending_updates: false })
+      const r = await api('setWebhook', { url: hookUrl, allowed_updates: ALLOWED_UPDATES, drop_pending_updates: false })
       console.log(r?.ok ? `[tg-bot] ✅ Webhook مفعّل: ${hookUrl}` : '[tg-bot] ⚠️ فشل تفعيل Webhook')
     } else {
       console.log('[tg-bot] ℹ️ لا يوجد SITE_URL/RAILWAY_PUBLIC_DOMAIN — لن يُفعَّل Webhook (استخدم TELEGRAM_POLLING=1 محلياً)')
@@ -725,7 +786,7 @@ export function createTelegramBot({ core, prisma }) {
   async function pollingLoop() {
     let offset = 0
     for (;;) {
-      const res = await api('getUpdates', { offset, timeout: 25, allowed_updates: ['message', 'callback_query'] }, 35000)
+      const res = await api('getUpdates', { offset, timeout: 25, allowed_updates: ['message', 'callback_query', 'my_chat_member'] }, 35000)
       if (res?.ok) {
         for (const u of res.result) {
           offset = u.update_id + 1

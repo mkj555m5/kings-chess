@@ -462,6 +462,42 @@ export function createGameCore(io) {
       if (room) broadcastState(io, room)
     })
 
+    // ===== المشاهدة المباشرة (Spectate) =====
+    // المشاهد ينضم لغرفة الشطرنج كمتفرج — يستقبل كل التحديثات بدون حق نقلات
+    socket.on('spect:join', ({ code }, ack) => {
+      const cleanCode = String(code || '').trim().toUpperCase()
+      const room = rooms.get(cleanCode)
+      if (!room) {
+        socket.emit('spect:error', { message: 'الغرفة غير موجودة' })
+        if (typeof ack === 'function') ack({ ok: false, message: 'الغرفة غير موجودة' })
+        return
+      }
+      socket.join(cleanCode)
+      socket.emit('spect:state', publicState(room))
+      if (typeof ack === 'function') ack({ ok: true, state: publicState(room) })
+    })
+
+    socket.on('spect:leave', ({ code }) => {
+      const cleanCode = String(code || '').trim().toUpperCase()
+      if (cleanCode) socket.leave(cleanCode)
+    })
+
+    // قائمة الغرف النشطة للمشاهدة (شطرنج)
+    socket.on('spect:list', (_data, ack) => {
+      const t = nowMs()
+      const list = [...rooms.values()].map((r) => ({
+        code: r.code,
+        over: !!r.over,
+        playing: !!(r.players.white && r.players.black),
+        white: r.players.white ? { name: r.players.white.name, telegramId: r.players.white.telegramId || null } : null,
+        black: r.players.black ? { name: r.players.black.name, telegramId: r.players.black.telegramId || null } : null,
+        timeControl: r.timeControl,
+        moveNumber: Math.floor(r.chess.history().length / 2) + 1,
+        idleSec: Math.round((t - r.lastMoveAt) / 1000),
+      }))
+      if (typeof ack === 'function') ack({ ok: true, list })
+    })
+
     socket.on('disconnect', () => {
       console.log(`[game-core] disconnected: ${socket.id}`)
       // إزالة من طوابير الانتظار

@@ -77,7 +77,7 @@ export function Piece({ type, color, className, size = '100%', flat = false }: P
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+     
     <img
       src={`/pieces/${color}${type.toUpperCase()}.svg`}
       alt={label}
@@ -116,7 +116,7 @@ export function TelegramAvatar({
         <Piece type={pieceType} color={color} />
       </span>
       {telegramId && state !== 'fail' && (
-        // eslint-disable-next-line @next/next/no-img-element
+         
         <img
           src={`/api/telegram/avatar?user=${telegramId}`}
           alt="صورة اللاعب من تلجرام"

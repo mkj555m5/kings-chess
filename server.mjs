@@ -4,6 +4,7 @@ import { createServer } from 'http'
 import next from 'next'
 import { Server } from 'socket.io'
 import { createGameCore } from './multiplayer/game-core.mjs'
+import { createXoCore } from './multiplayer/xo-core.mjs'
 import { createTelegramBot } from './multiplayer/telegram-bot.mjs'
 import { PrismaClient } from '@prisma/client'
 
@@ -45,6 +46,7 @@ const io = new Server(httpServer, {
 })
 
 const core = createGameCore(io)
+const xoCore = createXoCore(io)
 
 // بوت تلجرام (يعمل فقط عند تعيين TELEGRAM_BOT_TOKEN)
 const bot = createTelegramBot({ core, prisma })

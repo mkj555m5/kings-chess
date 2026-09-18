@@ -31,11 +31,100 @@ model TelegramUser {
   username    String? // @username إن وُجد
   firstName   String? // الاسم الأول من تلجرام
   displayName String // الاسم المستخدم داخل اللعبة
+  avatarUrl   String? // صورة البروفايل من تلجرام (تُحدَّث دورياً)
+  points      Int      @default(0) // نقاط مملكة الألعاب
   isOwner     Boolean  @default(false)
   createdAt   DateTime @default(now())
   lastSeenAt  DateTime @default(now())
 
   @@index([username])
+  @@index([points])
+}
+
+// سجل تغييرات النقاط (شفافية كاملة)
+model PointLog {
+  id         String   @id @default(cuid())
+  telegramId String
+  delta      Int
+  reason     String // win_chess | win_xo | win_auction | win_mystery | code | admin | ...
+  balance    Int // الرصيد بعد التغيير
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([telegramId])
+}
+
+// أكواد شحن النقاط (يضيفها المالك من لوحة التحكم)
+model RedeemCode {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  points      Int
+  maxUses     Int              @default(1) // عدد مرات الاستخدام الكلي
+  uses        Int              @default(0)
+  active      Boolean          @default(true)
+  note        String?
+  createdBy   String
+  createdAt   DateTime         @default(now())
+  redemptions CodeRedemption[]
+}
+
+model CodeRedemption {
+  id         String     @id @default(cuid())
+  codeId     String
+  telegramId String
+  createdAt  DateTime   @default(now())
+  code       RedeemCode @relation(fields: [codeId], references: [id])
+
+  @@unique([codeId, telegramId]) // كل مستخدم يستفيد من الكود مرة واحدة
+  @@index([telegramId])
+}
+
+// الصداقات بين مستخدمي المملكة
+model Friendship {
+  id        String   @id @default(cuid())
+  aTgId     String // من أرسل الطلب
+  bTgId     String // المستلم
+  status    String   @default("pending") // pending | accepted | blocked
+  createdAt DateTime @default(now())
+
+  @@unique([aTgId, bTgId])
+  @@index([bTgId])
+  @@index([aTgId])
+}
+
+// الرسائل الخاصة: نص / صور / فيديو / ملصقات
+model DirectMessage {
+  id        String    @id @default(cuid())
+  fromTgId  String
+  toTgId    String
+  kind      String    @default("text") // text | image | video | sticker
+  body      String // النص أو base64 مضغوط أو معرف الملصق
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([fromTgId, toTgId])
+  @@index([toTgId, createdAt])
+}
+
+// مباريات المملكة (المزاد / المجهول / XO) لتسجيل النتائج ومنح النقاط
+model KingdomMatch {
+  id          String   @id @default(cuid())
+  game        String // auction | mystery | xo
+  mode        String   @default("") // classic | promax | ai | online
+  playerTgId  String // اللاعب الأساسي
+  playerName  String
+  rivalName   String // الخصم (AI أو لاعب)
+  rivalTgId   String?
+  mySquad     String? // JSON أسماء كروت التشكيلة
+  rivalSquad  String?
+  scoreMe     Int      @default(0)
+  scoreRival  Int      @default(0)
+  result      String // win | loss | draw
+  pointsDelta Int      @default(0)
+  details     String? // JSON (أهداف + إحصائيات)
+  createdAt   DateTime @default(now())
+
+  @@index([playerTgId])
 }
 
 // رموز دخول أحادية الاستخدام - الروابط السحرية من البوت

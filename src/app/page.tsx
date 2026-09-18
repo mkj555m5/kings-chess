@@ -1,12 +1,14 @@
 'use client'
 
-// شطرنج الملوك - الصفحة الرئيسية: إدارة المشاهد (القائمة / المباراة)
-// + معالجة روابط بوت تلجرام: تسجيل دخول تلقائي (?auth=TOKEN) وربط التحديات (?challenge=CODE)
+// شطرنج الملوك + مملكة الألعاب — الصفحة الرئيسية: إدارة المشاهد
+// (المملكة / قائمة الشطرنج / المباراة) + معالجة روابط بوت تلجرام
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MenuScreen } from '@/components/chess/menu-screen'
 import { AIGame, type AIGameConfig } from '@/components/chess/ai-game'
 import { OnlineGame, type OnlineGameConfig } from '@/components/chess/online-game'
 import { StatsDialog } from '@/components/chess/stats-dialog'
+import { KingdomHub } from '@/components/kingdom/hub'
+import { ChessSpectator } from '@/components/kingdom/chess-spectator'
 import { loadLocalStats, getPlayerName, setPlayerName, type LocalStats } from '@/lib/local-stats'
 import { isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume } from '@/lib/sound'
 import { getTelegramSession, exchangeLoginToken, exchangeMiniAppSession, clearTelegramSession, type TelegramSession } from '@/lib/telegram-session'
@@ -14,10 +16,15 @@ import { loadTelegramWebApp } from '@/lib/telegram-mini-app'
 import type { TimeControl } from '@/lib/game-types'
 import { useToast } from '@/hooks/use-toast'
 
-type View = { screen: 'menu' } | { screen: 'ai'; config: AIGameConfig } | { screen: 'online'; config: OnlineGameConfig }
+type View =
+  | { screen: 'hub' }
+  | { screen: 'menu' }
+  | { screen: 'ai'; config: AIGameConfig }
+  | { screen: 'online'; config: OnlineGameConfig }
+  | { screen: 'spectate'; code: string }
 
 export default function Home() {
-  const [view, setView] = useState<View>({ screen: 'menu' })
+  const [view, setView] = useState<View>({ screen: 'hub' })
   const [playerName, setPlayerNameState] = useState('')
   const [localStats, setLocalStats] = useState<LocalStats | null>(null)
   const [soundOn, setSoundOn] = useState(true)
@@ -148,36 +155,57 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
-      {view.screen === 'menu' && (
-        <MenuScreen
-          playerName={playerName}
-          onPlayerNameChange={updatePlayerName}
-          soundOn={soundOn}
-          onToggleSound={toggleSound}
-          volume={volume}
-          onVolumeChange={changeVolume}
-          tgUser={tgUser}
-          onTelegramLogout={logoutTelegram}
-          localStats={localStats ?? {
-            wins: 0, losses: 0, draws: 0, aiWins: 0, onlineWins: 0,
-            currentStreak: 0, bestStreak: 0, gamesPlayed: 0, history: [],
-          }}
-          onStartAI={(config) => setView({ screen: 'ai', config })}
-          onStartOnline={(config) => setView({ screen: 'online', config })}
-          onStartLocal={() =>
-            setView({
-              screen: 'ai',
-              config: {
-                mode: 'local',
-                difficulty: 'medium',
-                playerColor: 'white',
-                timeControl: 'none',
-                playerName: 'اللاعبان',
-              },
-            })
-          }
-          onOpenStats={() => setStatsOpen(true)}
+      {view.screen === 'hub' && (
+        <KingdomHub
+          tgId={tgUser?.telegramId || null}
+          name={playerName || tgUser?.name || 'ضيف المملكة'}
+          onOpenChess={() => setView({ screen: 'menu' })}
+          onToast={(title, desc) => toast({ title, description: desc, duration: 3000 })}
+          onSpectateChess={(code) => setView({ screen: 'spectate', code })}
         />
+      )}
+
+      {view.screen === 'spectate' && <ChessSpectator code={view.code} onExit={() => setView({ screen: 'hub' })} />}
+
+      {view.screen === 'menu' && (
+        <div className="relative">
+          {/* زر العودة لمملكة الألعاب */}
+          <button
+            onClick={() => setView({ screen: 'hub' })}
+            className="fixed left-3 top-3 z-40 rounded-2xl border border-white/20 bg-black/60 px-3 py-2 text-xs font-black text-amber-300 shadow-xl backdrop-blur transition hover:bg-black/80"
+          >
+            🏰 المملكة
+          </button>
+          <MenuScreen
+            playerName={playerName}
+            onPlayerNameChange={updatePlayerName}
+            soundOn={soundOn}
+            onToggleSound={toggleSound}
+            volume={volume}
+            onVolumeChange={changeVolume}
+            tgUser={tgUser}
+            onTelegramLogout={logoutTelegram}
+            localStats={localStats ?? {
+              wins: 0, losses: 0, draws: 0, aiWins: 0, onlineWins: 0,
+              currentStreak: 0, bestStreak: 0, gamesPlayed: 0, history: [],
+            }}
+            onStartAI={(config) => setView({ screen: 'ai', config })}
+            onStartOnline={(config) => setView({ screen: 'online', config })}
+            onStartLocal={() =>
+              setView({
+                screen: 'ai',
+                config: {
+                  mode: 'local',
+                  difficulty: 'medium',
+                  playerColor: 'white',
+                  timeControl: 'none',
+                  playerName: 'اللاعبان',
+                },
+              })
+            }
+            onOpenStats={() => setStatsOpen(true)}
+          />
+        </div>
       )}
 
       {view.screen === 'ai' && (
