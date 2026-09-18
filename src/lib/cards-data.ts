@@ -1,12 +1,13 @@
 // ============ بيانات كروت اللاعبين — مملكة الألعاب ============
-// 19 كرت أصلي (صور حقيقية مرفوعة) + 79 لاعباً إضافياً (80-97) بصور وجوه حقيقية
+// 97+ كرت من 80 حتى 99 — كلها تُعرض بقالب FC25 الذهبي الموحد مع صور وجه حقيقية
+// تشمل حراس المرمى (GK) بإحصائيات: DIV/HAN/KIC/REF/SPD/POS
 // كل كرت له وزن ظهور (نسبة) — كلما زاد التقييم قلّت نسبة ظهوره في المزاد
 
 export interface PlayerCardData {
   id: string
   name: string
   rating: number // 80-99
-  pos: 'ST' | 'RW' | 'LW' | 'CAM' | 'CM' | 'CDM' | 'CB' | 'RB' | 'LB' | 'RM'
+  pos: 'GK' | 'ST' | 'RW' | 'LW' | 'CAM' | 'CM' | 'CDM' | 'CB' | 'RB' | 'LB' | 'RM'
   pac: number
   sho: number
   pas: number
@@ -16,32 +17,35 @@ export interface PlayerCardData {
   nation: string // علم الدولة emoji
   club: string
   league: string
-  img?: string // كرت صورة جاهز (الكروت المرفوعة الأصلية)
-  photo?: string // صورة وجه لاعب (تُركب على قالب الكرت)
-  alt?: string[] // مراكز بديلة (تظهر كبطاقات +++)
+  photo?: string // صورة وجه لاعب (تُركب على قالب FC25 الذهبي)
+  gk?: boolean // حارس مرمى — تُعرض إحصائياته بتسميات الحراس
+  alt?: string[] // مراكز بديلة (تظهر كبطاقات جانبية)
 }
 
-// ===== الكروت الأصلية (من الصور المرفوعة — إحصائيات حقيقية من الكروت) =====
+// ===== الكروت الأصلية (النجوم — صور وجهم حقيقية) =====
 const ORIGINALS: PlayerCardData[] = [
-  { id: 'messi-1', name: 'Messi', rating: 99, pos: 'RW', pac: 94, sho: 97, pas: 99, dri: 99, def: 48, phy: 85, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', img: '/cards/messi-1.webp', alt: ['RM', 'CAM', 'ST'] },
-  { id: 'messi-2', name: 'Messi', rating: 93, pos: 'RW', pac: 97, sho: 95, pas: 99, dri: 99, def: 38, phy: 68, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', img: '/cards/messi-2.webp', alt: ['RM', 'CAM', 'ST'] },
-  { id: 'messi-3', name: 'Messi', rating: 99, pos: 'RW', pac: 95, sho: 98, pas: 99, dri: 99, def: 45, phy: 86, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', img: '/cards/messi-3.webp', alt: ['RM', 'CAM', 'ST'] },
-  { id: 'salah-1', name: 'Salah', rating: 99, pos: 'RW', pac: 99, sho: 97, pas: 95, dri: 99, def: 62, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', img: '/cards/salah-1.webp', alt: ['RM', 'ST'] },
-  { id: 'salah-2', name: 'Salah', rating: 96, pos: 'RW', pac: 95, sho: 96, pas: 94, dri: 98, def: 58, phy: 88, nation: '🇪🇬', club: 'Liverpool', league: 'PL', img: '/cards/salah-2.webp', alt: ['RM', 'ST'] },
-  { id: 'salah-3', name: 'Salah', rating: 97, pos: 'RW', pac: 96, sho: 97, pas: 95, dri: 99, def: 60, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', img: '/cards/salah-3.webp', alt: ['RM', 'ST'] },
-  { id: 'salah-4', name: 'Salah', rating: 95, pos: 'RW', pac: 95, sho: 95, pas: 93, dri: 97, def: 56, phy: 86, nation: '🇪🇬', club: 'Liverpool', league: 'PL', img: '/cards/salah-4.webp', alt: ['RM', 'ST'] },
-  { id: 'ronaldo-1', name: 'Cristiano Ronaldo', rating: 99, pos: 'ST', pac: 95, sho: 99, pas: 94, dri: 98, def: 48, phy: 94, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', img: '/cards/ronaldo-1.webp', alt: ['LW', 'CAM'] },
-  { id: 'ronaldo-2', name: 'Cristiano Ronaldo', rating: 95, pos: 'ST', pac: 94, sho: 97, pas: 90, dri: 95, def: 45, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', img: '/cards/ronaldo-2.webp', alt: ['LW'] },
-  { id: 'ronaldo-3', name: 'Cristiano Ronaldo', rating: 97, pos: 'ST', pac: 95, sho: 98, pas: 92, dri: 96, def: 46, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', img: '/cards/ronaldo-3.webp', alt: ['LW', 'CAM'] },
-  { id: 'ronaldo-4', name: 'Cristiano Ronaldo', rating: 93, pos: 'ST', pac: 93, sho: 96, pas: 89, dri: 94, def: 44, phy: 93, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', img: '/cards/ronaldo-4.webp' },
-  { id: 'haaland-1', name: 'Haaland', rating: 98, pos: 'ST', pac: 97, sho: 99, pas: 95, dri: 96, def: 60, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', img: '/cards/haaland-1.webp' },
-  { id: 'haaland-2', name: 'Haaland', rating: 96, pos: 'ST', pac: 97, sho: 98, pas: 92, dri: 95, def: 58, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', img: '/cards/haaland-2.webp' },
-  { id: 'haaland-3', name: 'Haaland', rating: 95, pos: 'ST', pac: 96, sho: 98, pas: 90, dri: 94, def: 56, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', img: '/cards/haaland-3.webp' },
-  { id: 'haaland-4', name: 'Haaland', rating: 95, pos: 'ST', pac: 95, sho: 97, pas: 90, dri: 94, def: 57, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', img: '/cards/haaland-4.webp' },
-  { id: 'mbappe-1', name: 'Mbappé', rating: 91, pos: 'ST', pac: 96, sho: 91, pas: 80, dri: 92, def: 29, phy: 76, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', img: '/cards/mbappe-1.webp', alt: ['LW'] },
-  { id: 'yamal-1', name: 'Lamine Yamal', rating: 91, pos: 'RW', pac: 92, sho: 85, pas: 89, dri: 94, def: 38, phy: 66, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', img: '/cards/yamal-1.webp', alt: ['RM'] },
-  { id: 'maradona-1', name: 'Maradona', rating: 95, pos: 'CAM', pac: 94, sho: 95, pas: 93, dri: 98, def: 30, phy: 78, nation: '🇦🇷', club: 'Icon', league: 'ICON', img: '/cards/maradona-1.webp', alt: ['LW', 'ST'] },
-  { id: 'marmoush-1', name: 'Marmoush', rating: 82, pos: 'LW', pac: 90, sho: 83, pas: 79, dri: 84, def: 38, phy: 74, nation: '🇪🇬', club: 'Man City', league: 'PL', img: '/cards/marmoush-1.webp', alt: ['ST', 'LM'] },
+  { id: 'messi-1', name: 'Messi', rating: 99, pos: 'RW', pac: 94, sho: 97, pas: 99, dri: 99, def: 48, phy: 85, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: '/cards/photos/messi.jpg', alt: ['RM', 'CAM', 'ST'] },
+  { id: 'messi-2', name: 'Messi', rating: 93, pos: 'RW', pac: 97, sho: 95, pas: 99, dri: 99, def: 38, phy: 68, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: '/cards/photos/messi.jpg', alt: ['RM', 'CAM', 'ST'] },
+  { id: 'messi-3', name: 'Messi', rating: 97, pos: 'RW', pac: 95, sho: 98, pas: 99, dri: 99, def: 45, phy: 86, nation: '🇦🇷', club: 'Inter Miami', league: 'MLS', photo: '/cards/photos/messi.jpg', alt: ['RM', 'CAM', 'ST'] },
+  { id: 'salah-1', name: 'Salah', rating: 99, pos: 'RW', pac: 99, sho: 97, pas: 95, dri: 99, def: 62, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
+  { id: 'salah-2', name: 'Salah', rating: 96, pos: 'RW', pac: 95, sho: 96, pas: 94, dri: 98, def: 58, phy: 88, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
+  { id: 'salah-3', name: 'Salah', rating: 97, pos: 'RW', pac: 96, sho: 97, pas: 95, dri: 99, def: 60, phy: 90, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
+  { id: 'salah-4', name: 'Salah', rating: 95, pos: 'RW', pac: 95, sho: 95, pas: 93, dri: 97, def: 56, phy: 86, nation: '🇪🇬', club: 'Liverpool', league: 'PL', photo: '/cards/photos/salah.jpg', alt: ['RM', 'ST'] },
+  { id: 'ronaldo-1', name: 'Cristiano Ronaldo', rating: 99, pos: 'ST', pac: 95, sho: 99, pas: 94, dri: 98, def: 48, phy: 94, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg', alt: ['LW', 'CAM'] },
+  { id: 'ronaldo-2', name: 'Cristiano Ronaldo', rating: 95, pos: 'ST', pac: 94, sho: 97, pas: 90, dri: 95, def: 45, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg', alt: ['LW'] },
+  { id: 'ronaldo-3', name: 'Cristiano Ronaldo', rating: 97, pos: 'ST', pac: 95, sho: 98, pas: 92, dri: 96, def: 46, phy: 95, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg', alt: ['LW', 'CAM'] },
+  { id: 'ronaldo-4', name: 'Cristiano Ronaldo', rating: 93, pos: 'ST', pac: 93, sho: 96, pas: 89, dri: 94, def: 44, phy: 93, nation: '🇵🇹', club: 'Al Nassr', league: 'RSL', photo: '/cards/photos/ronaldo.jpg' },
+  { id: 'haaland-1', name: 'Haaland', rating: 98, pos: 'ST', pac: 97, sho: 99, pas: 95, dri: 96, def: 60, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
+  { id: 'haaland-2', name: 'Haaland', rating: 96, pos: 'ST', pac: 97, sho: 98, pas: 92, dri: 95, def: 58, phy: 98, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
+  { id: 'haaland-3', name: 'Haaland', rating: 95, pos: 'ST', pac: 96, sho: 98, pas: 90, dri: 94, def: 56, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
+  { id: 'haaland-4', name: 'Haaland', rating: 94, pos: 'ST', pac: 95, sho: 97, pas: 90, dri: 94, def: 57, phy: 97, nation: '🇳🇴', club: 'Man City', league: 'PL', photo: '/cards/photos/haaland.jpg' },
+  { id: 'mbappe-1', name: 'Mbappé', rating: 91, pos: 'ST', pac: 96, sho: 91, pas: 80, dri: 92, def: 29, phy: 76, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', photo: '/cards/photos/mbappe.jpg', alt: ['LW'] },
+  { id: 'mbappe-2', name: 'Mbappé', rating: 93, pos: 'ST', pac: 97, sho: 92, pas: 82, dri: 93, def: 31, phy: 78, nation: '🇫🇷', club: 'Real Madrid', league: 'La Liga', photo: '/cards/photos/mbappe.jpg', alt: ['LW'] },
+  { id: 'yamal-1', name: 'Lamine Yamal', rating: 91, pos: 'RW', pac: 92, sho: 85, pas: 89, dri: 94, def: 38, phy: 66, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', photo: '/cards/photos/yamal.jpg', alt: ['RM'] },
+  { id: 'yamal-2', name: 'Lamine Yamal', rating: 93, pos: 'RW', pac: 93, sho: 87, pas: 91, dri: 96, def: 40, phy: 68, nation: '🇪🇸', club: 'Barcelona', league: 'La Liga', photo: '/cards/photos/yamal.jpg', alt: ['RM'] },
+  { id: 'maradona-1', name: 'Maradona', rating: 95, pos: 'CAM', pac: 94, sho: 95, pas: 93, dri: 98, def: 30, phy: 78, nation: '🇦🇷', club: 'Icon', league: 'ICON', photo: '/cards/photos/maradona.jpg', alt: ['LW', 'ST'] },
+  { id: 'marmoush-1', name: 'Marmoush', rating: 82, pos: 'LW', pac: 90, sho: 83, pas: 79, dri: 84, def: 38, phy: 74, nation: '🇪🇬', club: 'Man City', league: 'PL', photo: '/cards/photos/marmoush.jpg', alt: ['ST', 'LM'] },
+  { id: 'marmoush-2', name: 'Marmoush', rating: 85, pos: 'ST', pac: 91, sho: 86, pas: 81, dri: 86, def: 40, phy: 76, nation: '🇪🇬', club: 'Man City', league: 'PL', photo: '/cards/photos/marmoush.jpg', alt: ['LW'] },
 ]
 
 // ===== إحصائيات مولّدة واقعية حسب المركز والتقييم =====
@@ -56,6 +60,8 @@ const POS_PROFILE: Record<string, { pac: number; sho: number; pas: number; dri: 
   CB: { pac: -4, sho: -27, pas: -3, dri: -11, def: 7, phy: 7 },
   RB: { pac: 6, sho: -23, pas: 2, dri: -3, def: 4, phy: 2 },
   LB: { pac: 6, sho: -23, pas: 2, dri: -3, def: 4, phy: 2 },
+  // الحارس: DIV/HAN/KIC/REF/SPD/POS — تُخزن بنفس الحقول بالترتيب
+  GK: { pac: 4, sho: 2, pas: -6, dri: 6, def: -2, phy: 3 },
 }
 
 function hash(s: string): number {
@@ -81,7 +87,7 @@ function genStats(id: string, rating: number, pos: string) {
   }
 }
 
-// ===== اللاعبون الإضافيون (صورهم تُحمّل إلى /cards/photos) =====
+// ===== اللاعبون الإضافيون (صورهم في /cards/photos) =====
 interface NewPlayerDef {
   id: string
   name: string
@@ -94,6 +100,19 @@ interface NewPlayerDef {
 }
 
 const NEW_PLAYERS: NewPlayerDef[] = [
+  // ===== حراس المرمى =====
+  { id: 'courtois', name: 'Courtois', rating: 97, pos: 'GK', nation: '🇧🇪', club: 'Real Madrid', league: 'La Liga' },
+  { id: 'alisson', name: 'Alisson', rating: 95, pos: 'GK', nation: '🇧🇷', club: 'Liverpool', league: 'PL' },
+  { id: 'buffon', name: 'Buffon', rating: 95, pos: 'GK', nation: '🇮🇹', club: 'Icon', league: 'ICON' },
+  { id: 'casillas', name: 'Casillas', rating: 94, pos: 'GK', nation: '🇪🇸', club: 'Icon', league: 'ICON' },
+  { id: 'donnarumma', name: 'Donnarumma', rating: 94, pos: 'GK', nation: '🇮🇹', club: 'Man City', league: 'PL' },
+  { id: 'martinez', name: 'E. Martínez', rating: 93, pos: 'GK', nation: '🇦🇷', club: 'Aston Villa', league: 'PL' },
+  { id: 'bounou', name: 'Bounou', rating: 92, pos: 'GK', nation: '🇲🇦', club: 'Al Hilal', league: 'RSL' },
+  { id: 'neuer', name: 'Neuer', rating: 92, pos: 'GK', nation: '🇩🇪', club: 'Bayern', league: 'Bundesliga' },
+  { id: 'ederson', name: 'Ederson', rating: 90, pos: 'GK', nation: '🇧🇷', club: 'Fenerbahçe', league: 'Süper Lig' },
+  { id: 'maignan', name: 'Maignan', rating: 88, pos: 'GK', nation: '🇫🇷', club: 'AC Milan', league: 'Serie A' },
+  { id: 'kobel', name: 'Kobel', rating: 87, pos: 'GK', nation: '🇨🇭', club: 'Dortmund', league: 'Bundesliga' },
+  { id: 'elshenawy', name: 'El Shenawy', rating: 86, pos: 'GK', nation: '🇪🇬', club: 'Al Ahly', league: 'EGY' },
   // ===== 95-97 (نادرة جداً) =====
   { id: 'bellingham', name: 'Bellingham', rating: 97, pos: 'CAM', nation: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', club: 'Real Madrid', league: 'La Liga', alt: ['CM', 'ST'] },
   { id: 'vinicius', name: 'Vinícius Jr', rating: 97, pos: 'LW', nation: '🇧🇷', club: 'Real Madrid', league: 'La Liga', alt: ['ST'] },
@@ -191,6 +210,7 @@ function buildAll(): PlayerCardData[] {
       club: p.club,
       league: p.league,
       photo: `/cards/photos/${p.id}.jpg`,
+      gk: p.pos === 'GK' || undefined,
       alt: p.alt,
     }
   })
@@ -218,7 +238,7 @@ export function weightFor(rating: number): number {
 
 export function percentFor(rating: number): number {
   const total = ALL_CARDS.reduce((s, c) => s + weightFor(c.rating), 0)
-  return Math.round((weightFor(rating) / total) * 1000) / 10
+  return Math.max(0.1, Math.round((weightFor(rating) / total) * 1000) / 10)
 }
 
 // ===== اختيار كرت عشوائي موزون (مع فلاتر اختيارية) =====
@@ -239,6 +259,7 @@ export function pickCards(n: number, rng: () => number = Math.random): PlayerCar
 
 // قوة الكرت في مركزه (للمحاكاة)
 export function cardPower(c: PlayerCardData): number {
+  if (c.gk) return Math.round(c.dri * 0.3 + c.pac * 0.25 + c.sho * 0.25 + c.phy * 0.2) // REF+DIV+HAN+POS
   const roleSho = ['ST', 'RW', 'LW', 'CAM', 'RM'].includes(c.pos)
   const roleDef = ['CB', 'RB', 'LB', 'CDM'].includes(c.pos)
   if (roleSho) return Math.round(c.sho * 0.4 + c.dri * 0.25 + c.pac * 0.2 + c.pas * 0.15)

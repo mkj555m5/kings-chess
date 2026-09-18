@@ -2,13 +2,16 @@
 
 // ============ شاشة محاكاة المباراة ============
 // شريط تقدم 0→100% (الدقائق 0→90)، عند 50% ينتهي الشوط الأول،
-// الأهداف تظهر لحظياً بالهداف والدقيقة، وبعدها الإحصائيات والتشكيلتان.
+// الأهداف تظهر لحظياً بالهداف والدقيقة، وبعدها التشكيلتان والإحصائيات
+// وزر «متابعة» يعود للصفحة الرئيسة.
 
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { MatchResult } from '@/lib/match-engine'
 import { GOAL_TYPE_AR } from '@/lib/match-engine'
+import { CARD_BY_ID } from '@/lib/cards-data'
 import { Avatar } from './avatar'
+import { PlayerCard } from './player-card'
 
 interface Props {
   match: MatchResult
@@ -16,12 +19,16 @@ interface Props {
   homeTgId?: string | null
   awayName: string
   awayTgId?: string | null
+  homeSquad?: string[] // معرفات كروت التشكيلة الأولى
+  awaySquad?: string[]
+  pointsEarned?: number | null
   onClose: () => void
+  closeLabel?: string
 }
 
 const DURATION_MS = 22000 // زمن المحاكاة الكامل
 
-export function MatchSim({ match, homeName, homeTgId, awayName, awayTgId, onClose }: Props) {
+export function MatchSim({ match, homeName, homeTgId, awayName, awayTgId, homeSquad, awaySquad, pointsEarned, onClose, closeLabel = 'متابعة 👑' }: Props) {
   const [minute, setMinute] = useState(0)
   const [phase, setPhase] = useState<'playing' | 'halftime' | 'done'>('playing')
   const [visibleGoals, setVisibleGoals] = useState<MatchResult['goals']>([])
@@ -58,7 +65,7 @@ export function MatchSim({ match, homeName, homeTgId, awayName, awayTgId, onClos
     }
     raf.current = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf.current)
-     
+
   }, [])
 
   const progress = Math.round((minute / 90) * 100)
@@ -178,7 +185,7 @@ export function MatchSim({ match, homeName, homeTgId, awayName, awayTgId, onClos
           )}
         </div>
 
-        {/* النتيجة والإحصائيات النهائية */}
+        {/* النتيجة والتشكيلتان والإحصائيات النهائية */}
         <AnimatePresence>
           {showStats && (
             <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="space-y-4">
@@ -218,16 +225,42 @@ export function MatchSim({ match, homeName, homeTgId, awayName, awayTgId, onClos
                 ))}
               </div>
 
+              {/* التشكيلتان النهائيتان */}
+              {homeSquad && homeSquad.length > 0 && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <SquadRow title={`🟢 ${homeName}`} ids={homeSquad} />
+                  <SquadRow title={`🔵 ${awayName}`} ids={awaySquad || homeSquad} />
+                </div>
+              )}
+
+              {/* النقاط المكتسبة */}
+              {typeof pointsEarned === 'number' && pointsEarned > 0 && (
+                <div className="rounded-2xl bg-amber-400/15 p-3 text-center text-lg font-black text-amber-300">+{pointsEarned} نقطة! 🎉</div>
+              )}
+
               <button
                 onClick={onClose}
                 className="w-full rounded-2xl bg-gradient-to-l from-amber-400 to-yellow-500 py-3.5 text-lg font-black text-black shadow-lg transition hover:brightness-110 active:scale-[.98]"
               >
-                متابعة 👑
+                {closeLabel}
               </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </motion.div>
+  )
+}
+
+function SquadRow({ title, ids }: { title: string; ids: string[] }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/30 p-2">
+      <div className="mb-1 text-center text-[11px] font-black text-zinc-300">{title}</div>
+      <div className="flex flex-wrap justify-center gap-1">
+        {ids.map((id, i) => (
+          <PlayerCard key={`${id}-${i}`} card={CARD_BY_ID.get(id) || null} size={62} />
+        ))}
+      </div>
+    </div>
   )
 }

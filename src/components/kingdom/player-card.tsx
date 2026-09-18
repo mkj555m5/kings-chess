@@ -1,17 +1,17 @@
 'use client'
 
-// ============ كرت اللاعب — مملكة الألعاب ============
-// نسخة مطابقة لتصميم كروت FUTTIES المرفوعة: إطار ذهبي مزخرف، خلفية متدرجة
-// مع دوامات، تقييم ومركز أعلى اليسار، أسماء وإحصائيات أسفل، وشريط نجوم.
-// 3 مستويات حسب التقييم: FUTTIES (95+) / ذهبي (88-94) / فضي-أزرق (80-87)
+// ============ كرت اللاعب FC25 — مملكة الألعاب ============
+// قالب ذهبي موحد مطابق لكروت FC25 الحقيقية: درع ذهبي معدني،
+// تقييم ومركز أعلى اليسار، صورة اللاعب بدمج ناعم، الإحصائيات والعلم والنادي
+// حراس المرمى يعرضون: DIV HAN KIC REF SPD POS
 // + وضع "مجهول" (كرت أسود غامض للعبة اللاعب المجهول)
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { PlayerCardData } from '@/lib/cards-data'
 
 interface Props {
   card?: PlayerCardData | null
-  size?: number // العرض بالبكسل (الارتفاع = 1.4×)
+  size?: number // العرض بالبكسل (الارتفاع = 1.43×)
   variant?: 'normal' | 'mystery'
   glow?: boolean
   className?: string
@@ -19,234 +19,269 @@ interface Props {
   selected?: boolean
 }
 
-const TIER = {
-  futties: {
-    // 95+ — وردية/ذهبية مثل كروت ميسي وصلاح ورونالدو
-    border: ['#f6e3b8', '#c9992e', '#8a5a13', '#e8c56d'],
-    bg1: '#ff2d8f',
-    bg2: '#ff7ab8',
-    bg3: '#ff9d5c',
-    accent: '#ec4899',
-  },
-  gold: {
-    // 88-94 — ذهبية كلاسيكية مثل كرت مبابي
-    border: ['#f7e9c0', '#d4af37', '#8a6d1d', '#e5c860'],
-    bg1: '#f5d060',
-    bg2: '#e3b53a',
-    bg3: '#caa02a',
-    accent: '#b8860b',
-  },
-  rare: {
-    // 80-87 — أزرق داكن فخم
-    border: ['#dbe4f3', '#8fa3c8', '#3c5379', '#b8c6e0'],
-    bg1: '#2b4c8c',
-    bg2: '#1d3a75',
-    bg3: '#4a6fb5',
-    accent: '#3b82f6',
-  },
-} as const
-
-function tierOf(rating: number): keyof typeof TIER {
-  if (rating >= 95) return 'futties'
-  if (rating >= 88) return 'gold'
-  return 'rare'
-}
-
-// شكل الدرع: قمة خفيفة في المنتصف، أكتاف مستديرة، قاع ضيق مستدير
+// شكل درع FC25: قمة ناعمة، أكتاف مستديرة، قاع مدبب أنيق
 const SHIELD_PATH =
-  'M150 8 C 170 2, 200 4, 226 10 C 248 15, 264 16, 278 12 C 288 34, 292 60, 290 92 C 296 170, 288 268, 268 322 C 252 366, 214 400, 150 412 C 86 400, 48 366, 32 322 C 12 268, 4 170, 10 92 C 8 60, 12 34, 22 12 C 36 16, 52 15, 74 10 C 100 4, 130 2, 150 8 Z'
+  'M150 8 C 196 3, 244 11, 264 24 C 273 31, 277 43, 276 56 C 281 130, 277 232, 260 300 C 249 349, 214 392, 150 420 C 86 392, 51 349, 40 300 C 23 232, 19 130, 24 56 C 23 43, 27 31, 36 24 C 56 11, 104 3, 150 8 Z'
+
+// تسميات الإحصائيات — لاعبي المناصب / الحراس
+const STAT_LABELS = ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY']
+const GK_STAT_LABELS = ['DIV', 'HAN', 'KIC', 'REF', 'SPD', 'POS']
 
 export function PlayerCard({ card, size = 200, variant = 'normal', glow = false, className = '', onClick, selected = false }: Props) {
   const [imgFailed, setImgFailed] = useState(false)
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const w = size
-  const h = Math.round(size * 1.4)
-  const id = card?.id || 'mystery'
+  const h = Math.round(size * 1.43)
 
   if (variant === 'mystery' || !card) {
-    return <MysteryCard w={w} h={h} className={className} onClick={onClick} selected={selected} />
+    return <MysteryCard size={w} className={className} onClick={onClick} selected={selected} />
   }
 
-  const t = TIER[tierOf(card.rating)]
-  const gradId = `bg-${id}`
-  const borderId = `bd-${id}`
-  const clipId = `clip-${id}`
-  const swirlId = `sw-${id}`
-  const showFull = card.img && !imgFailed
-  const showPhoto = !card.img && card.photo && !imgFailed
+  const id = `${card.id}-${uid}`
+  const showPhoto = !!card.photo && !imgFailed
+  const labels = card.gk ? GK_STAT_LABELS : STAT_LABELS
+  const stats = [card.pac, card.sho, card.pas, card.dri, card.def, card.phy]
+  const stars = Math.max(1, Math.min(5, Math.round((card.rating - 74) / 5)))
 
   return (
     <div
       className={`relative select-none ${onClick ? 'cursor-pointer transition-transform duration-200 hover:scale-[1.04]' : ''} ${className}`}
-      style={{ width: w, height: h, filter: selected ? 'drop-shadow(0 0 14px rgba(250,204,21,.8))' : glow ? `drop-shadow(0 0 10px ${t.accent}88)` : undefined }}
+      style={{
+        width: w,
+        height: h,
+        filter: selected
+          ? 'drop-shadow(0 0 14px rgba(250,204,21,.85))'
+          : glow
+            ? 'drop-shadow(0 0 12px rgba(250,204,21,.5)) drop-shadow(0 6px 14px rgba(0,0,0,.55))'
+            : 'drop-shadow(0 5px 12px rgba(0,0,0,.5))',
+      }}
       onClick={onClick}
     >
-      <svg viewBox="0 0 300 420" width={w} height={h} className="block">
+      <svg viewBox="0 0 300 430" width={w} height={h} className="block">
         <defs>
-          <linearGradient id={borderId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={t.border[0]} />
-            <stop offset="35%" stopColor={t.border[1]} />
-            <stop offset="65%" stopColor={t.border[2]} />
-            <stop offset="100%" stopColor={t.border[3]} />
-          </linearGradient>
-          <radialGradient id={gradId} cx="50%" cy="38%" r="80%">
-            <stop offset="0%" stopColor={t.bg2} />
-            <stop offset="55%" stopColor={t.bg1} />
-            <stop offset="100%" stopColor={t.bg3} />
+          {/* الجسم الذهبي المعدني */}
+          <radialGradient id={`bg-${id}`} cx="50%" cy="30%" r="95%">
+            <stop offset="0%" stopColor="#f9ecc0" />
+            <stop offset="28%" stopColor="#f0d98a" />
+            <stop offset="58%" stopColor="#dcb95c" />
+            <stop offset="82%" stopColor="#b98e2f" />
+            <stop offset="100%" stopColor="#8a651a" />
           </radialGradient>
-          <filter id={swirlId} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="14" />
-          </filter>
-          <clipPath id={clipId}>
+          {/* لمعان قطري مثل المعدن المطرَّق */}
+          <linearGradient id={`sheen-${id}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.34" />
+            <stop offset="24%" stopColor="#ffffff" stopOpacity="0.06" />
+            <stop offset="46%" stopColor="#ffffff" stopOpacity="0.22" />
+            <stop offset="62%" stopColor="#ffffff" stopOpacity="0.03" />
+            <stop offset="82%" stopColor="#ffffff" stopOpacity="0.14" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+          </linearGradient>
+          {/* إطار خارجي ذهبي داكن */}
+          <linearGradient id={`bd-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8a6a1f" />
+            <stop offset="30%" stopColor="#c9a227" />
+            <stop offset="70%" stopColor="#a37f22" />
+            <stop offset="100%" stopColor="#6b4f14" />
+          </linearGradient>
+          {/* تعتيم أسفل الاسم والإحصائيات */}
+          <linearGradient id={`fade-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#5c3d08" stopOpacity="0" />
+            <stop offset="55%" stopColor="#4a3005" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="#3a2503" stopOpacity="0.6" />
+          </linearGradient>
+          {/* قناع دمج الصورة البيضاوي الناعم */}
+          <radialGradient id={`pm-${id}`} cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="62%" stopColor="#ffffff" />
+            <stop offset="82%" stopColor="#ffffff" stopOpacity="0.72" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
+          <clipPath id={`clip-${id}`}>
             <path d={SHIELD_PATH} />
           </clipPath>
-          <linearGradient id={`namegrad-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#000" stopOpacity="0" />
-            <stop offset="100%" stopColor="#000" stopOpacity="0.55" />
-          </linearGradient>
+          <mask id={`mask-${id}`}>
+            <ellipse cx="150" cy="136" rx="116" ry="112" fill={`url(#pm-${id})`} />
+          </mask>
         </defs>
 
-        {/* الخلفية السوداء خلف الدرع */}
-        <rect x="0" y="0" width="300" height="420" fill="#0a0a0f" />
+        {/* خلفية شفافة خارج الدرع */}
+        <rect width="300" height="430" fill="transparent" />
 
-        {/* الدرع الداخلي */}
-        <g clipPath={`url(#${clipId})`}>
-          <rect width="300" height="420" fill={`url(#${gradId})`} />
-          {/* دوامات ضوئية مثل الكروت الأصلية */}
-          <ellipse cx="80" cy="150" rx="130" ry="60" fill="#ffffff" opacity="0.18" filter={`url(#${swirlId})`} transform="rotate(-24 80 150)" />
-          <ellipse cx="230" cy="240" rx="140" ry="55" fill={t.bg3} opacity="0.5" filter={`url(#${swirlId})`} transform="rotate(18 230 240)" />
-          <ellipse cx="140" cy="330" rx="150" ry="70" fill="#ffffff" opacity="0.10" filter={`url(#${swirlId})`} transform="rotate(-12 140 330)" />
+        <g clipPath={`url(#clip-${id})`}>
+          {/* الجسم الذهبي */}
+          <rect width="300" height="430" fill={`url(#bg-${id})`} />
+          {/* لمعة قطرية */}
+          <rect width="300" height="430" fill={`url(#sheen-${id})`} />
 
-          {/* صورة اللاعب أو صورة الكرت الكامل */}
-          {showFull && (
-            <image href={card.img} x="0" y="0" width="300" height="420" preserveAspectRatio="xMidYMid slice" onError={() => setImgFailed(true)} />
-          )}
+          {/* صورة اللاعب بدمج ناعم */}
           {showPhoto && (
-            <image href={card.photo} x="45" y="55" width="210" height="270" preserveAspectRatio="xMidYMin slice" onError={() => setImgFailed(true)} />
+            <image
+              href={card.photo}
+              x="26"
+              y="18"
+              width="248"
+              height="230"
+              preserveAspectRatio="xMidYMin slice"
+              mask={`url(#mask-${id})`}
+              onError={() => setImgFailed(true)}
+            />
+          )}
+          {/* بديل نصي إن فشلت الصورة: صورة ظلية */}
+          {!showPhoto && (
+            <g opacity="0.5">
+              <circle cx="150" cy="118" r="52" fill="#8a651a" />
+              <path d="M60 250 C 60 175, 240 175, 240 250 L 240 260 L 60 260 Z" fill="#8a651a" />
+            </g>
           )}
 
-          {/* ظل سفلي للنصوص */}
-          {!showFull && <rect x="0" y="240" width="300" height="180" fill={`url(#namegrad-${id})`} />}
+          {/* تعتيم سفلي ناعم */}
+          <rect x="0" y="200" width="300" height="230" fill={`url(#fade-${id})`} />
         </g>
 
-        {/* الإطار الذهبي المزدوج */}
-        <path d={SHIELD_PATH} fill="none" stroke={`url(#${borderId})`} strokeWidth="10" />
+        {/* الإطار الخارجي + الخط الداخلي الفاتح */}
+        <path d={SHIELD_PATH} fill="none" stroke={`url(#bd-${id})`} strokeWidth="7" />
+        <path d={SHIELD_PATH} fill="none" stroke="#fff7d6" strokeWidth="1.4" opacity="0.65" transform="translate(0 0) scale(0.955) translate(6.8 9.7)" />
+        <path d={SHIELD_PATH} fill="none" stroke="#3f2c05" strokeWidth="1" opacity="0.5" transform="translate(0 0) scale(0.985) translate(2.2 3.2)" />
 
-        {!showFull && (
-          <>
-            {/* التقييم والمركز أعلى اليسار */}
-            <text x="38" y="64" fill="#ffffff" fontSize="44" fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" style={{ paintOrder: 'stroke' }} stroke="#00000066" strokeWidth="1">
-              {card.rating}
-            </text>
-            <text x="38" y="86" fill="#ffffff" fontSize="17" fontWeight="800" style={{ paintOrder: 'stroke' }} stroke="#00000066" strokeWidth="0.8">
-              {card.pos}
-            </text>
-            {card.alt && card.alt.length > 0 && (
-              <text x="70" y="86" fill="#ffffffcc" fontSize="15" fontWeight="800">
-                ++
-              </text>
-            )}
-
-            {/* الشارات الجانبية (مراكز بديلة) */}
-            {card.alt?.map((p, i) => (
-              <g key={p} transform={`translate(10, ${108 + i * 30})`}>
-                <rect width="34" height="26" rx="6" fill={t.accent} stroke="#ffffff88" strokeWidth="1" />
-                <text x="17" y="18" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="800">
-                  {p}
-                </text>
-              </g>
-            ))}
-
-            {/* الاسم */}
-            <text x="150" y="298" textAnchor="middle" fill="#ffffff" fontSize={card.name.length > 12 ? 22 : 27} fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" style={{ paintOrder: 'stroke', letterSpacing: '.5px' }} stroke="#000000aa" strokeWidth="3">
-              {card.name}
-            </text>
-
-            {/* الإحصائيات */}
-            <g fontSize="12.5" fontWeight="700" fill="#ffffff">
-              {(
-                [
-                  ['PAC', card.pac],
-                  ['SHO', card.sho],
-                  ['PAS', card.pas],
-                  ['DRI', card.dri],
-                  ['DEF', card.def],
-                  ['PHY', card.phy],
-                ] as const
-              ).map(([label, val], i) => (
-                <g key={label}>
-                  <text x={36 + i * 39} y={326} fill="#ffffffdd" fontSize="11.5" fontWeight="700" textAnchor="middle">
-                    {label}
-                  </text>
-                  <text x={36 + i * 39} y={342} textAnchor="middle" fontSize="14" fontWeight="900" style={{ paintOrder: 'stroke' }} stroke="#00000088" strokeWidth="1.4">
-                    {val}
-                  </text>
-                </g>
-              ))}
-            </g>
-
-            {/* العلم والنادي */}
-            <text x="128" y="368" textAnchor="middle" fontSize="17">
-              {card.nation}
-            </text>
-            <text x="172" y="368" textAnchor="middle" fill="#ffffffee" fontSize="11.5" fontWeight="700" style={{ paintOrder: 'stroke' }} stroke="#00000099" strokeWidth="1.6">
-              {card.club}
-            </text>
-
-            {/* شريط النجوم */}
-            <g transform="translate(150, 392)">
-              <rect x="-52" y="-12" width="104" height="22" rx="6" fill={t.accent} stroke="#ffffff66" strokeWidth="1" />
-              <text textAnchor="middle" y="5" fill="#fff" fontSize="12" fontWeight="900">
-                ★ {Math.max(3, Math.min(5, Math.round((card.rating - 76) / 5)))} ★
-              </text>
-            </g>
-          </>
+        {/* التقييم والمركز أعلى اليسار */}
+        <text x="34" y="66" fill="#ffffff" fontSize="42" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif" style={{ paintOrder: 'stroke' }} stroke="#4a300508" strokeWidth="0">
+          {card.rating}
+        </text>
+        <text x="34" y="88" fill="#ffffff" fontSize="16.5" fontWeight="800" fontFamily="Arial, sans-serif" style={{ paintOrder: 'stroke' }}>
+          {card.pos}
+        </text>
+        {/* علامة + + (أفضل نسخة) */}
+        {card.alt && card.alt.length > 0 && (
+          <text x="34" y="106" fill="#fff8d9" fontSize="13" fontWeight="900" opacity="0.95">
+            + +
+          </text>
         )}
+
+        {/* المراكز البديلة — شرائح يسار الدرع */}
+        {card.alt?.map((p, i) => (
+          <g key={p} transform={`translate(8, ${124 + i * 28})`}>
+            <rect width="30" height="22" rx="5" fill="#3a2503" opacity="0.55" stroke="#f3e2a4" strokeWidth="0.8" />
+            <text x="15" y="15.5" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="800">
+              {p}
+            </text>
+          </g>
+        ))}
+
+        {/* الاسم */}
+        <text
+          x="150"
+          y="277"
+          textAnchor="middle"
+          fill="#ffffff"
+          fontSize={card.name.length > 14 ? 20 : card.name.length > 10 ? 23 : 26}
+          fontWeight="900"
+          fontFamily="Arial, sans-serif"
+          style={{ paintOrder: 'stroke', letterSpacing: '0.5px' }}
+          stroke="#3a2503"
+          strokeWidth="3.5"
+        >
+          {card.name}
+        </text>
+
+        {/* خط فاصل رفيع */}
+        <line x1="62" y1="288" x2="238" y2="288" stroke="#fff7d6" strokeWidth="1" opacity="0.4" />
+
+        {/* الإحصائيات الست */}
+        {stats.map((v, i) => (
+          <g key={labels[i]}>
+            <text x={52 + i * 39.2} y="309" textAnchor="middle" fill="#f7ecc8" fontSize="10.5" fontWeight="700" fontFamily="Arial, sans-serif">
+              {labels[i]}
+            </text>
+            <text
+              x={52 + i * 39.2}
+              y="327"
+              textAnchor="middle"
+              fill="#ffffff"
+              fontSize="16"
+              fontWeight="900"
+              fontFamily="Arial, sans-serif"
+              style={{ paintOrder: 'stroke' }}
+              stroke="#3a2503"
+              strokeWidth="2.2"
+            >
+              {v}
+            </text>
+          </g>
+        ))}
+
+        {/* العلم والنادي */}
+        <text x="118" y="356" textAnchor="middle" fontSize="19">
+          {card.nation}
+        </text>
+        <text
+          x="133"
+          y="355"
+          fill="#ffffff"
+          fontSize="11.5"
+          fontWeight="700"
+          fontFamily="Arial, sans-serif"
+          style={{ paintOrder: 'stroke' }}
+          stroke="#3a2503"
+          strokeWidth="2"
+        >
+          {card.club}
+        </text>
+
+        {/* شريط النجوم السفلي */}
+        <g transform="translate(150, 384)">
+          <rect x="-50" y="-13" width="100" height="25" rx="12" fill="#3a2503" opacity="0.6" stroke="#f3e2a4" strokeWidth="0.9" />
+          <text textAnchor="middle" y="5.5" fill="#ffd75e" fontSize="13.5" fontWeight="900">
+            {'★'.repeat(stars)}
+          </text>
+        </g>
       </svg>
     </div>
   )
 }
 
-// ============ الكرت المجهول الأسود ============
-export function MysteryCard({ w, h, className = '', onClick, selected = false }: { w: number; h: number; className?: string; onClick?: () => void; selected?: boolean }) {
+// ============ الكرت المجهول الأسود — بنفس شكل FC25 ============
+export function MysteryCard({ size = 200, className = '', onClick, selected = false }: { size?: number; className?: string; onClick?: () => void; selected?: boolean }) {
+  const w = size
+  const h = Math.round(size * 1.43)
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   return (
     <div
       className={`relative select-none ${onClick ? 'cursor-pointer transition-transform duration-200 hover:scale-[1.04]' : ''} ${className}`}
-      style={{ width: w, height: h, filter: selected ? 'drop-shadow(0 0 16px rgba(168,85,247,.85))' : 'drop-shadow(0 4px 10px #0008)' }}
+      style={{ width: w, height: h, filter: selected ? 'drop-shadow(0 0 16px rgba(168,85,247,.9))' : 'drop-shadow(0 5px 12px rgba(0,0,0,.55))' }}
       onClick={onClick}
     >
-      <svg viewBox="0 0 300 420" width={w} height={h} className="block">
+      <svg viewBox="0 0 300 430" width={w} height={h} className="block">
         <defs>
-          <linearGradient id="myst-border" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#7b5cd6" />
-            <stop offset="40%" stopColor="#2e1a5e" />
-            <stop offset="70%" stopColor="#0c0618" />
-            <stop offset="100%" stopColor="#9a6cf5" />
-          </linearGradient>
-          <radialGradient id="myst-bg" cx="50%" cy="40%" r="75%">
-            <stop offset="0%" stopColor="#241242" />
-            <stop offset="60%" stopColor="#120a24" />
+          <radialGradient id={`mbg-${uid}`} cx="50%" cy="32%" r="95%">
+            <stop offset="0%" stopColor="#3b2a6b" />
+            <stop offset="40%" stopColor="#1e1240" />
+            <stop offset="75%" stopColor="#0e0824" />
             <stop offset="100%" stopColor="#05030c" />
           </radialGradient>
-          <clipPath id="myst-clip">
+          <linearGradient id={`mbd-${uid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#9a6cf5" />
+            <stop offset="45%" stopColor="#5b21b6" />
+            <stop offset="100%" stopColor="#2e1065" />
+          </linearGradient>
+          <clipPath id={`mclip-${uid}`}>
             <path d={SHIELD_PATH} />
           </clipPath>
         </defs>
-        <rect width="300" height="420" fill="#050308" />
-        <g clipPath="url(#myst-clip)">
-          <rect width="300" height="420" fill="url(#myst-bg)" />
-          <ellipse cx="150" cy="200" rx="150" ry="110" fill="#6d28d9" opacity="0.16" />
+        <g clipPath={`url(#mclip-${uid})`}>
+          <rect width="300" height="430" fill={`url(#mbg-${uid})`} />
+          <ellipse cx="150" cy="180" rx="130" ry="120" fill="#6d28d9" opacity="0.14" />
         </g>
-        <path d={SHIELD_PATH} fill="none" stroke="url(#myst-border)" strokeWidth="10" />
-        <text x="150" y="210" textAnchor="middle" fill="#c4b5fd" fontSize="110" fontWeight="900" opacity="0.9">
+        <path d={SHIELD_PATH} fill="none" stroke={`url(#mbd-${uid})`} strokeWidth="7" />
+        <text x="150" y="235" textAnchor="middle" fill="#c4b5fd" fontSize="120" fontWeight="900" opacity="0.92">
           ؟
         </text>
-        <text x="150" y="268" textAnchor="middle" fill="#a78bfa" fontSize="17" fontWeight="800">
+        <text x="150" y="290" textAnchor="middle" fill="#a78bfa" fontSize="17" fontWeight="800" fontFamily="Arial, sans-serif">
           اللاعب المجهول
         </text>
-        <g transform="translate(150, 392)">
-          <rect x="-52" y="-12" width="104" height="22" rx="6" fill="#5b21b6" stroke="#a78bfa66" strokeWidth="1" />
-          <text textAnchor="middle" y="5" fill="#e9d5ff" fontSize="12" fontWeight="900">
-            ★ ★ ★ ★ ★
+        <g transform="translate(150, 384)">
+          <rect x="-50" y="-13" width="100" height="25" rx="12" fill="#1e1240" stroke="#a78bfa66" strokeWidth="0.9" />
+          <text textAnchor="middle" y="5.5" fill="#d8b4fe" fontSize="13.5" fontWeight="900">
+            ★ ★ ★
           </text>
         </g>
       </svg>

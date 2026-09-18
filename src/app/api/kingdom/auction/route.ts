@@ -18,6 +18,7 @@ function publicState(s: AuctionSession) {
     totalRounds: s.totalRounds,
     phase: s.phase,
     current: s.current,
+    roundPos: s.roundPosLabel || null,
     price: s.price,
     leader: s.leader,
     deadlineMs: s.deadlineMs,

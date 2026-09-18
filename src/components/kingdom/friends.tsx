@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Avatar } from './avatar'
+import { VerifiedBadge } from './verified-badge'
 
 interface FriendUser {
   telegramId: string
@@ -315,7 +316,10 @@ export function FriendsPanel({ tgId, name }: Props) {
             {threads.incoming.map((u) => (
               <div key={u.requestId} className="flex items-center gap-2 rounded-xl bg-black/30 p-2">
                 <Avatar telegramId={u.telegramId} name={u.displayName} size={36} />
-                <div className="flex-1 text-sm font-bold">{u.displayName}</div>
+                <div className="flex flex-1 items-center gap-1 text-sm font-bold">
+                  {u.displayName}
+                  <VerifiedBadge size={13} />
+                </div>
                 <button onClick={() => void friendAction('accept', { requestId: u.requestId })} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-black">
                   قبول
                 </button>
@@ -344,7 +348,10 @@ export function FriendsPanel({ tgId, name }: Props) {
               >
                 <Avatar telegramId={u.telegramId} name={u.displayName} size={38} />
                 <div className="flex-1 text-right">
-                  <div className="text-sm font-bold">{u.displayName}</div>
+                  <div className="flex items-center gap-1 text-sm font-bold">
+                    {u.displayName}
+                    <VerifiedBadge size={13} />
+                  </div>
                   <div className="text-[10px] text-zinc-500">{u.username ? `@${u.username}` : `ID: ${u.telegramId}`}</div>
                 </div>
                 <span className="text-lg">💬</span>

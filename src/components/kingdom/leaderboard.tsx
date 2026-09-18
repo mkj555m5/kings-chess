@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from './avatar'
+import { VerifiedBadge } from './verified-badge'
 
 interface Row {
   pos: number
@@ -65,7 +66,7 @@ export function Leaderboard({ myTgId }: { myTgId?: string | null }) {
                 <div className="flex items-center gap-1.5">
                   <span className="truncate font-bold text-white">{r.displayName}</span>
                   {r.isOwner && <span title="المالك">👑</span>}
-                  <span className="text-[10px] text-emerald-400" title="حساب موثق عبر تلجرام">✔</span>
+                  <VerifiedBadge size={14} variant={r.isOwner ? 'gold' : 'blue'} />
                 </div>
                 <div className="text-[11px] font-bold" style={{ color: r.rank.color }}>
                   {r.rank.icon} {r.rank.name}

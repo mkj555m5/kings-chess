@@ -15,6 +15,8 @@ import { OwnerPanel } from './owner-panel'
 import { XoGame } from './xo'
 import { AuctionGame } from './auction'
 import { MysteryGame } from './mystery'
+import { VerifiedBadge } from './verified-badge'
+import { ArcadeSection, ArcadePlayer } from './arcade'
 
 export interface KingdomUser {
   telegramId: string
@@ -28,7 +30,7 @@ export interface KingdomUser {
 }
 
 type Tab = 'games' | 'rank' | 'friends' | 'codes' | 'owner'
-type GameView = null | 'chess' | 'xo' | 'auction-classic' | 'auction-promax' | 'mystery'
+type GameView = null | 'chess' | 'xo' | 'auction-classic' | 'auction-promax' | 'mystery' | 'arcade'
 
 interface Props {
   tgId: string | null
@@ -41,6 +43,7 @@ interface Props {
 export function KingdomHub({ tgId, name, onOpenChess, onToast, onSpectateChess }: Props) {
   const [tab, setTab] = useState<Tab>('games')
   const [game, setGame] = useState<GameView>(null)
+  const [arcadeGame, setArcadeGame] = useState<string | null>(null)
   const [user, setUser] = useState<KingdomUser | null>(null)
   const [codeInput, setCodeInput] = useState('')
   const [codeMsg, setCodeMsg] = useState('')
@@ -112,6 +115,7 @@ export function KingdomHub({ tgId, name, onOpenChess, onToast, onSpectateChess }
       return <AuctionGame key="ap" tgId={tgId || ''} name={name} mode="promax" onExit={exit} onPoints={addPoints} />
     if (game === 'mystery')
       return <MysteryGame tgId={tgId || ''} name={name} onExit={exit} onPoints={addPoints} />
+    if (game === 'arcade') return <ArcadePlayer onExit={exit} initialGame={arcadeGame} />
   }
 
   return (
@@ -123,11 +127,8 @@ export function KingdomHub({ tgId, name, onOpenChess, onToast, onSpectateChess }
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-lg font-black">{name}</span>
-              {tgId && (
-                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-black text-emerald-300" title="حساب موثق عبر تلجرام">
-                  ✔ موثق
-                </span>
-              )}
+              {tgId && <VerifiedBadge size={18} variant={user?.isOwner ? 'gold' : 'blue'} />}
+              {user?.isOwner && <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-black text-amber-300">المالك</span>}
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
               <span className="font-bold" style={{ color: rank.color }}>
@@ -216,6 +217,16 @@ export function KingdomHub({ tgId, name, onOpenChess, onToast, onSpectateChess }
                   onClick={() => setGame('mystery')}
                 />
               </div>
+            )}
+
+            {/* ألعاب الأركيد — ألعاب خارجية بمساحة خاصة */}
+            {tab === 'games' && (
+              <ArcadeSection
+                onPlay={(id) => {
+                  setArcadeGame(id || null)
+                  setGame('arcade')
+                }}
+              />
             )}
 
             {tab === 'rank' && <Leaderboard myTgId={tgId} />}

@@ -38,6 +38,8 @@ export interface AuctionSession {
   rivalPlanMax: number // سقف مزايدة الـ AI لهذه البطاقة
   rivalBidAt: number // موعد نية الـ AI للمزايدة
   aiPersona: { name: string; emoji: string }
+  roundTypes: string[] // مركز كل جولة — بلا تكرار
+  roundPosLabel?: string // نوع الجولة الحالية للعرض
 }
 
 const RIVALS = [
@@ -48,17 +50,40 @@ const RIVALS = [
   { name: 'الماسح جونيور', emoji: '🧙' },
 ]
 
-const cfg = (mode: AuctionMode) =>
-  mode === 'promax'
-    ? { budget: 200, totalRounds: 12, opening: 5, strong: true }
-    : { budget: 50, totalRounds: 6, opening: 5, strong: false }
+// أنواع المراكز — كل جولة تعرض لاعباً من نوع مختلف بلا تكرار
+// مثال: GK ثم ST ثم أجنحة ثم وسط ثم دفاع (كما في المزادات الحقيقية)
+const POSITION_TYPES = ['GK', 'ST', 'RW', 'LW', 'CAM', 'CM', 'CDM', 'CB', 'RB', 'LB'] as const
 
-const sessions = new Map<string, AuctionSession>()
+function shuffle<T>(arr: readonly T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
-// في برو ماكس: تعزيز ظهور الكروت القوية (≥90) ×4 — مع استبعاد الكروت المملوكة
-function pickAuctionCard(mode: AuctionMode, owned: Set<string> = new Set()): PlayerCardData {
-  const pool = ALL_CARDS.filter((c) => !owned.has(c.id))
-  if (mode !== 'promax') return pickWeightedCard(Math.random, pool.length ? pool : ALL_CARDS)
+/** ترتيب أنواع الجولات: GK وST دائماً ثم خلط — بلا تكرار حتى استنفاد الأنواع */
+function buildRoundTypes(totalRounds: number): string[] {
+  const rest = shuffle((POSITION_TYPES as readonly string[]).filter((p) => p !== 'GK' && p !== 'ST'))
+  const types = ['GK', 'ST', ...rest]
+  const out = types.slice(0, Math.min(totalRounds, types.length))
+  // برو ماكس 12 جولة > 10 أنواع — نضيف أنواعاً إضافية بلا تكرار متجاور
+  let i = 0
+  while (out.length < totalRounds && i < types.length * 3) {
+    const candidate = types[i % types.length]
+    if (candidate !== out[out.length - 1]) out.push(candidate)
+    i++
+  }
+  return out
+}
+
+/** اختيار كرت من نوع مركز محدد (بغير المملوك) — برو ماكس يرجّح الأقوى */
+function pickCardOfType(type: string, owned: Set<string>, promax = false): PlayerCardData {
+  let pool = ALL_CARDS.filter((c) => c.pos === type && !owned.has(c.id))
+  if (!pool.length) pool = ALL_CARDS.filter((c) => c.pos === type) // نوع مستنفد — اسمح بالتكرار
+  if (!pool.length) return pickWeightedCard(Math.random, ALL_CARDS.filter((c) => !owned.has(c.id)).length ? ALL_CARDS.filter((c) => !owned.has(c.id)) : ALL_CARDS)
+  if (!promax) return pickWeightedCard(Math.random, pool)
   const weights = pool.map((c) => (c.rating >= 93 ? 6 : c.rating >= 90 ? 4 : 1))
   const total = weights.reduce((a, b) => a + b, 0)
   let r = Math.random() * total
@@ -68,6 +93,13 @@ function pickAuctionCard(mode: AuctionMode, owned: Set<string> = new Set()): Pla
   }
   return pool[pool.length - 1]
 }
+
+const cfg = (mode: AuctionMode) =>
+  mode === 'promax'
+    ? { budget: 200, totalRounds: 12, opening: 5, strong: true }
+    : { budget: 50, totalRounds: 6, opening: 5, strong: false }
+
+const sessions = new Map<string, AuctionSession>()
 
 export function createAuction(mode: AuctionMode, player: { tgId: string; name: string }): AuctionSession {
   const c = cfg(mode)
@@ -94,6 +126,7 @@ export function createAuction(mode: AuctionMode, player: { tgId: string; name: s
     rivalPlanMax: 0,
     rivalBidAt: 0,
     aiPersona: RIVALS[Math.floor(Math.random() * RIVALS.length)],
+    roundTypes: buildRoundTypes(c.totalRounds),
   }
   sessions.set(id, s)
   nextRound(s)
@@ -107,7 +140,10 @@ function nextRound(s: AuctionSession) {
     s.current = null
     return
   }
-  s.current = pickAuctionCard(s.mode, new Set([...s.mySquad.map((c) => c.id), ...s.rivalSquad.map((c) => c.id)]))
+  const owned = new Set([...s.mySquad.map((c) => c.id), ...s.rivalSquad.map((c) => c.id)])
+  const type = s.roundTypes[s.round - 1] || 'ST'
+  s.current = pickCardOfType(type, owned, s.mode === 'promax')
+  s.roundPosLabel = type
   s.price = cfg(s.mode).opening
   s.leader = null
   const value = marketValue(s.current)
@@ -230,19 +266,14 @@ const mysterySessions = new Map<string, MysterySession>()
 
 export function createMystery(player: { tgId: string; name: string }): MysterySession {
   const id = `M${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
-  // 12 كرت متنوعة: معظمها 82-94 مع لاعب واحد أو اثنين نادرين
+  // 12 بطاقة: كل بطاقة من مركز مختلف — لا تكرار (GK ثم ST ثم أجنحة…)
+  const types = buildRoundTypes(12)
   const pool: PlayerCardData[] = []
   const used = new Set<string>()
-  while (pool.length < 11) {
-    const c = pickWeightedCard()
-    if (used.has(c.id) || c.rating > 95) continue
-    used.add(c.id)
-    pool.push(c)
+  for (const t of types) {
+    pool.push(pickCardOfType(t, used))
+    used.add(pool[pool.length - 1].id)
   }
-  // كرت نادر واحد يضيف الإثارة
-  const rare = ALL_CARDS.filter((c) => c.rating >= 95 && !used.has(c.id))
-  if (rare.length) pool.push(rare[Math.floor(Math.random() * rare.length)])
-  else pool.push(pickWeightedCard())
 
   // خلط
   for (let i = pool.length - 1; i > 0; i--) {
@@ -289,8 +320,8 @@ export function tickMystery(s: MysterySession, now = Date.now()): void {
   const mystery = s.mysteryId ? CARD_BY_ID.get(s.mysteryId) : null
   if (!visible || !mystery) return
   const ev = s.pool.reduce((a, c) => a + c.rating, 0) / s.pool.length
-  const choice: Side = visible.rating >= ev + 1 ? 'visible' : Math.random() < 0.55 ? 'mystery' : 'visible'
-  resolveMysteryPick(s, choice === 'visible' ? 'rival' : 'rival', choice)
+  const choice: 'visible' | 'mystery' = visible.rating >= ev + 1 ? 'visible' : Math.random() < 0.55 ? 'mystery' : 'visible'
+  resolveMysteryPick(s, 'rival', choice)
 }
 
 // picker يختار — بطاقة الاختيار تعود له والأخرى للخصم
